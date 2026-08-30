@@ -1,0 +1,3 @@
+export function notificationsHTML(s){if(s.settings?.notifications===false)return `<div class="panel"><h3>National Alerts</h3><div class="mini">Notifications are disabled in Settings.</div></div>`;const items=s.notifications.slice(0,12);return `<div class="panel"><h3>National Alerts</h3>${items.length?items.map(n=>`<div class="notice ${n.type||''}">${escapeHTML(n.text)}</div>`).join(''):'<div class="mini">No active alerts.</div>'}</div>`}
+export function pushNotice(s,text,type='information'){s.notifications.unshift({text,type});if(s.notifications.length>40)s.notifications.pop()}
+function escapeHTML(x=''){return x.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
