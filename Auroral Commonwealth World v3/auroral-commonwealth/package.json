@@ -1,0 +1,11 @@
+{
+  "name": "auroral-commonwealth",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node --check main.js && node --check server.mjs && node --check multiplayer.js"
+  },
+  "engines": {"node": ">=18"}
+}
