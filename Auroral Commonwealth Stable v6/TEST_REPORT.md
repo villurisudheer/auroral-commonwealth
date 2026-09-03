@@ -26,7 +26,7 @@ PASS — `/` returned the Stable v6 HTML document.
 
 PASS — `/main.js` returned the Stable v6 client build.
 
-PASS — `/health` returned HTTP 200 with version `6.0.0`, country count `202`, max players `20`, and `ok: true`.
+PASS — `/health` returned HTTP 200 with version `6.0.1`, country count `202`, max players `20`, and `ok: true`.
 
 PASS — Dockerfile now runs `npm run validate` before producing the deployable image.
 
@@ -49,3 +49,7 @@ PASS — Oversized WebSocket messages are rejected.
 ## Notes
 
 The historical WWII Germany entry uses a neutral historical scenario presentation and does not include extremist symbols.
+
+## v6.0.1 hotfix
+
+PASS — Theme startup order fixed so `systemDark` is initialized before `applyPrefs()` can resolve System appearance.

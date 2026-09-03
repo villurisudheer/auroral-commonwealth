@@ -24,7 +24,7 @@ const PORT=Number(process.env.PORT||8000);
 const rooms=new Map();
 const sockets=new Set();
 const MAX_PLAYERS=20;
-const BUILD_VERSION='6.0.0';
+const BUILD_VERSION='6.0.1';
 const MAX_WS_FRAME_BYTES=64*1024;
 
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.ico':'image/x-icon'};

@@ -22,12 +22,12 @@ import {MultiplayerClient} from './multiplayer.js';
 
 const app=document.querySelector('#app');
 const PREF_KEY='auroral-commonwealth-prefs-v1';
+const systemDark=window.matchMedia?.('(prefers-color-scheme: dark)');
 let prefs=loadPrefs();
 applyPrefs();
 let audioCtx=null,ambientOsc=null,ambientGain=null;
 let state=null,view='dashboard',clock=null,activeSaveId=null;
 let lastNonZeroSpeed=1;
-const systemDark=window.matchMedia?.('(prefers-color-scheme: dark)');
 let multiplayer=null,mpRoom=null,mpScreen='menu';
 const difficultyDesc={easy:'More starting funds and more forgiving debt limits.',normal:'Balanced simulation.',hard:'Lower starting reserves and harsher debt constraints.',nightmare:'Severe starting constraints and little room for policy mistakes.'};
 

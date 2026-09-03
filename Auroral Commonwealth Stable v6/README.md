@@ -4,6 +4,12 @@
 
 A browser-based geopolitical strategy and economic simulation with single-player, LAN multiplayer, and online multiplayer for up to **20 human players**.
 
+## v6.0.1 hotfix
+
+- Fixed startup crash: `Cannot access 'systemDark' before initialization`.
+- Theme preference detection is initialized before appearance settings are applied.
+- Full syntax and 12-month country simulation validation rerun successfully.
+
 ## Stable v6 highlights
 
 - 202 selectable country/scenario entries.
@@ -96,7 +102,7 @@ Once live, check:
 
 `https://YOUR-SERVICE.onrender.com/health`
 
-A healthy v6 server returns JSON containing `ok: true`, version `6.0.0`, country count `202`, and max players `20`.
+A healthy v6 server returns JSON containing `ok: true`, version `6.0.1`, country count `202`, and max players `20`.
 
 ## Validation
 
