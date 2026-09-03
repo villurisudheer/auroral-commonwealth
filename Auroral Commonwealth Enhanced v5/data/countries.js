@@ -7163,7 +7163,7 @@ const RAW_COUNTRIES=
   {
     "id": "uss",
     "name": "Union of Soviet Socialist Republics (USSR)",
-    "flag": "🚩",
+    "flag": "☭",
     "alpha2": "XU",
     "capital": "Moscow",
     "region": "Historical",
@@ -7197,7 +7197,7 @@ const RAW_COUNTRIES=
   {
     "id": "wwg",
     "name": "WWII Peak Germany",
-    "flag": "🇩🇪",
+    "flag": "卍",
     "alpha2": "XG",
     "capital": "Berlin",
     "region": "Historical",
