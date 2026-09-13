@@ -1,5 +1,5 @@
 @echo off
-title Auroral Commonwealth Stable v6 LAN Multiplayer
+title Auroral Commonwealth Stable v6.1 LAN Multiplayer
 where node >nul 2>nul
 if errorlevel 1 (
   echo Node.js is required. Install Node.js LTS first.

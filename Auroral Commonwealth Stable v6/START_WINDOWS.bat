@@ -1,5 +1,5 @@
 @echo off
-title Auroral Commonwealth Stable v6 Multiplayer Server
+title Auroral Commonwealth Stable v6.1 Multiplayer Server
 where node >nul 2>nul
 if errorlevel 1 (
   echo Node.js is required for multiplayer.
@@ -7,6 +7,6 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-echo Starting AURORAL COMMONWEALTH Stable v6 multiplayer server...
+echo Starting AURORAL COMMONWEALTH Stable v6.1 multiplayer server...
 node server.mjs
 pause

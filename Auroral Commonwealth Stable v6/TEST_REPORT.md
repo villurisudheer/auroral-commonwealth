@@ -1,55 +1,106 @@
-# AURORAL COMMONWEALTH Stable v6 — Test Report
+# AURORAL COMMONWEALTH Stable v6.1 — Regression Test Report
 
-## Build validation
+**Release type:** Bug fixes only  
+**Version:** 6.1.0  
+**Test date:** 2026-09-13
 
-PASS — `npm run validate` completed successfully.
+## Scope
 
-PASS — 202 selectable roster entries loaded.
+v6.1 was tested specifically as a stability/bug-fix release. No new gameplay feature or roster expansion was introduced.
 
-PASS — 202 unique country IDs detected.
+## Automated validator
 
-PASS — Required requested entries present: Micronesia, Transnistria, The Republic of Samratpur, நாய் Country, Federation of Hyperpixel, USSR, WWII Peak Germany, and Ottoman Empire.
+Command:
 
-PASS — Every `.js` and `.mjs` file passed Node syntax parsing.
+```bash
+npm run validate
+```
 
-PASS — Every roster entry has valid required numeric values, map coordinates and resource structures.
+Result:
 
-PASS — Every one of the 202 entries completed a 12-month normal-difficulty simulation.
+```text
+AURORAL COMMONWEALTH v6.1 validation PASS
+- 202 selectable entries / 202 unique IDs
+- every JS/MJS file parses
+- every country completed a 12-month finite-value simulation
+- all tax/budget slider mappings, clamps and markup passed
+- invalid/negative economy actions are rejected safely
+- zero-stock resource regression passed
+- constant chart bounds regression passed
+- malformed/older save-state repair and all major view renders passed
+```
 
-PASS — No tested GDP, treasury, debt, inflation, unemployment, population, approval, stability, technology, or infrastructure value became `NaN` or `Infinity`.
+## Policy-slider regression
 
-## Deployment checks
+PASS — 5 tax policy sliders map to `state.taxes` correctly.  
+PASS — 10 national-budget sliders map to `state.budget` correctly.  
+PASS — Trade-screen tariff slider maps to the same tariff policy.  
+PASS — Tariff clamps to 0–40%.  
+PASS — Other tax sliders clamp to 0–60%.  
+PASS — Budget sliders clamp to 0.5–12%.  
+PASS — Invalid policy groups/keys are rejected without throwing.  
+PASS — Slider markup contains no `NaN` or `undefined` values.
 
-PASS — Server started successfully on an alternate local port.
+## Multiplayer regression
 
-PASS — `/` returned the Stable v6 HTML document.
+A two-client WebSocket session was exercised against the v6.1 server.
 
-PASS — `/main.js` returned the Stable v6 client build.
+PASS — room creation  
+PASS — second player join  
+PASS — India/United States country claims  
+PASS — shared match start  
+PASS — tax slider update synchronized through server  
+PASS — budget slider update synchronized through server  
+PASS — server-side tariff clamp  
+PASS — server-side budget minimum clamp  
+PASS — invalid resource action returned `ok: false` without terminating the server
 
-PASS — `/health` returned HTTP 200 with version `6.0.1`, country count `202`, max players `20`, and `ok: true`.
+## Server smoke test
 
-PASS — Dockerfile now runs `npm run validate` before producing the deployable image.
+PASS — `/` returned HTTP 200.  
+PASS — `/health` returned HTTP 200.  
+PASS — health response reported version `6.1.0`.  
+PASS — health response reported 202 countries.  
+PASS — health response reported maxPlayers 20.
 
-## Blank-screen protection
+## Economy/input regressions
 
-PASS — `index.html` contains a visible boot screen before the main module loads.
+PASS — negative borrow rejected.  
+PASS — negative debt repayment cannot increase treasury/debt.  
+PASS — invalid resource ID rejected safely.  
+PASS — negative import/export quantities rejected.  
+PASS — negative industry investment rejected.  
+PASS — depleted zero stock does not magically regenerate from the old fallback expression.
 
-PASS — `bootstrap.js` dynamically imports the game and catches startup/module failures.
+## UI/data stability regressions
 
-PASS — Runtime and unhandled-promise failures surface a recovery panel rather than silently leaving the page blank.
+PASS — constant zero chart data creates finite chart bounds.  
+PASS — malformed/older state can be repaired before rendering.  
+PASS — Dashboard renders after repair.  
+PASS — Government renders after repair.  
+PASS — Industry renders after repair.  
+PASS — Resources renders after repair.  
+PASS — Trade renders after repair.  
+PASS — Technology renders after repair.  
+PASS — Infrastructure renders after repair.  
+PASS — Diplomacy renders after repair.  
+PASS — Commonwealth renders after repair.  
+PASS — Analytics renders after repair.  
+PASS — Tutorial renders after repair.  
+PASS — Settings renders after repair.  
+PASS — Saves view renders after repair.
 
-## Multiplayer hardening
+## Roster/content integrity
 
-PASS — Maximum human players remains 20.
+PASS — 202 roster entries retained.  
+PASS — 202 unique country IDs.  
+PASS — Micronesia retained.  
+PASS — Transnistria retained.  
+PASS — Republic of Samratpur retained.  
+PASS — நாய் Country retained.  
+PASS — Federation of Hyperpixel retained.  
+PASS — USSR retained.  
+PASS — WWII Peak Germany historical scenario retained.  
+PASS — Ottoman Empire retained.
 
-PASS — WebSocket hello metadata reports v6 build information.
-
-PASS — Oversized WebSocket messages are rejected.
-
-## Notes
-
-The historical WWII Germany entry uses a neutral historical scenario presentation and does not include extremist symbols.
-
-## v6.0.1 hotfix
-
-PASS — Theme startup order fixed so `systemDark` is initialized before `applyPrefs()` can resolve System appearance.
+No roster additions/removals or intentional gameplay-feature changes were made for v6.1.

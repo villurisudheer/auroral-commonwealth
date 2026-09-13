@@ -7,5 +7,19 @@ export function updateTrade(s){
  s.trade.balance=s.trade.exports-s.trade.imports;
 }
 export function signTradeAgreement(s){const cost=60;if(s.treasury<cost)return false;s.treasury-=cost;s.trade.agreements++;s.trade.exports*=1.025;s.diplomacy.reputation=Math.min(100,s.diplomacy.reputation+2);return true}
-export function buyResource(s,key,units){const r=s.resources[key];const cost=units*r.price/100;if(!r||s.treasury<cost)return false;s.treasury-=cost;r.stock=(r.stock||0)+units;s.trade.imports+=cost*3;return true}
-export function exportResource(s,key,units){const r=s.resources[key];if(!r|| (r.stock||0)<units)return false;const revenue=units*r.price/115;r.stock-=units;s.treasury+=revenue;s.trade.exports+=revenue*3;return true}
+export function buyResource(s,key,units){
+ const r=s.resources?.[key];units=Number(units);
+ if(!r||!Number.isFinite(units)||units<=0||!Number.isFinite(r.price))return false;
+ const cost=units*r.price/100;
+ if(!Number.isFinite(cost)||cost<0||s.treasury<cost)return false;
+ s.treasury-=cost;r.stock=(Number.isFinite(r.stock)?r.stock:0)+units;s.trade.imports+=cost*3;return true;
+}
+export function exportResource(s,key,units){
+ const r=s.resources?.[key];units=Number(units);
+ if(!r||!Number.isFinite(units)||units<=0||!Number.isFinite(r.price))return false;
+ const stock=Number.isFinite(r.stock)?r.stock:0;
+ if(stock<units)return false;
+ const revenue=units*r.price/115;
+ if(!Number.isFinite(revenue)||revenue<0)return false;
+ r.stock=stock-units;s.treasury+=revenue;s.trade.exports+=revenue*3;return true;
+}

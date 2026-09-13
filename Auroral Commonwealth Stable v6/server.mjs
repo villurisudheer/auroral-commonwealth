@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {COUNTRIES} from './data/countries.js';
 import {createState,snapshot,advanceDate} from './game/state.js';
 import {computeMonthlyEconomy} from './game/economy.js';
-import {applyGovernmentEffects,borrow,repayDebt} from './game/government.js';
+import {applyGovernmentEffects,borrow,repayDebt,setPolicyValue} from './game/government.js';
 import {updateResources,updateEnergy} from './game/resources.js';
 import {updateTrade,signTradeAgreement,buyResource,exportResource} from './game/trade.js';
 import {startResearch,updateResearch} from './game/technology.js';
@@ -24,7 +24,7 @@ const PORT=Number(process.env.PORT||8000);
 const rooms=new Map();
 const sockets=new Set();
 const MAX_PLAYERS=20;
-const BUILD_VERSION='6.0.1';
+const BUILD_VERSION='6.1.0';
 const MAX_WS_FRAME_BYTES=64*1024;
 
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.ico':'image/x-icon'};
@@ -61,7 +61,7 @@ server.on('upgrade',(req,socket)=>{
   socket.on('data',d=>onData(ws,d));
   socket.on('close',()=>disconnect(ws));
   socket.on('error',()=>disconnect(ws));
-  send(ws,{type:'hello',server:'Auroral Commonwealth Multiplayer',version:6,build:BUILD_VERSION,maxPlayers:MAX_PLAYERS,countries:COUNTRIES.length});
+  send(ws,{type:'hello',server:'Auroral Commonwealth Multiplayer',version:'6.1',build:BUILD_VERSION,maxPlayers:MAX_PLAYERS,countries:COUNTRIES.length});
 });
 
 function onData(ws,data){
@@ -113,7 +113,7 @@ function handle(ws,m){
     case'unclaim_country':{const room=getRoom(ws),p=getPlayer(ws);if(!room||!p||room.started)return;p.countryId=null;p.state=null;broadcastRoom(room);break}
     case'start_game':{const room=getRoom(ws);if(!room)return;if(room.hostId!==ws.playerId)return error(ws,'Only the host can start the match.');if(![...room.players.values()].every(p=>p.state))return error(ws,'Every player must choose a country first.');room.started=true;room.speed=0;broadcastRoom(room);break}
     case'set_speed':{const room=getRoom(ws);if(!room?.started)return;if(room.hostId!==ws.playerId)return error(ws,'Only the host controls the shared game clock.');const speed=[0,1,2,5,10].includes(+m.speed)?+m.speed:0;room.speed=speed;for(const p of room.players.values())if(p.state)p.state.speed=speed;restartTimer(room);broadcastRoom(room);break}
-    case'policy':{const p=getPlayer(ws),room=getRoom(ws);if(!room?.started||!p?.state)return;const group=m.group,key=m.key,val=+m.value;if(!Number.isFinite(val))return;if(group==='tax'&&key in p.state.taxes){const max=key==='tariff'?40:60;p.state.taxes[key]=Math.max(0,Math.min(max,val))}else if(group==='budget'&&key in p.state.budget){p.state.budget[key]=Math.max(.5,Math.min(12,val))}else return;broadcastRoom(room);break}
+    case'policy':{const p=getPlayer(ws),room=getRoom(ws);if(!room?.started||!p?.state)return;if(!setPolicyValue(p.state,String(m.group||''),String(m.key||''),m.value)){error(ws,'Invalid policy value.');return}broadcastRoom(room);break}
     case'action':{const room=getRoom(ws),p=getPlayer(ws);if(!room?.started||!p?.state)return;const ok=applyAction(p.state,m);send(ws,{type:'action_result',ok,action:m.action});broadcastRoom(room);break}
     case'resolve_event':{const room=getRoom(ws),p=getPlayer(ws);if(!room?.started||!p?.state)return;const ok=resolveEvent(p.state,+m.choice);send(ws,{type:'action_result',ok,action:'resolve_event'});broadcastRoom(room);break}
     case'player_aid':{const room=getRoom(ws),from=getPlayer(ws);const to=room?.players.get(String(m.to||''));if(!room?.started||!from?.state||!to?.state||to.id===from.id)return;const amt=50;if(from.state.treasury<amt)return error(ws,'Not enough treasury to send aid.');from.state.treasury-=amt;to.state.treasury+=amt;from.state.diplomacy.reputation=Math.min(100,from.state.diplomacy.reputation+1.5);from.state.notifications.unshift({type:'information',text:`Sent ${amt}B in multiplayer aid to ${to.state.name}.`});to.state.notifications.unshift({type:'information',text:`Received ${amt}B in multiplayer aid from ${from.state.name}.`});broadcastRoom(room);break}
@@ -130,7 +130,7 @@ function disconnect(ws,explicit=false){if(!sockets.has(ws))return;sockets.delete
 setInterval(()=>{const now=Date.now();for(const [c,r] of rooms){if(r.players.size===0||(![...r.players.values()].some(p=>p.ws)&&now-r.createdAt>30*60*1000)){if(r.timer)clearInterval(r.timer);rooms.delete(c)}}},60_000).unref();
 
 server.listen(PORT,'0.0.0.0',()=>{
-  console.log(`\nAURORAL COMMONWEALTH MULTIPLAYER — Stable v6`);
+  console.log(`\nAURORAL COMMONWEALTH MULTIPLAYER — Stable v6.1`);
   console.log(`Build: ${BUILD_VERSION} • Countries: ${COUNTRIES.length} • Max players: ${MAX_PLAYERS}`);
   console.log(`Local: http://127.0.0.1:${PORT}`);
   for(const nets of Object.values(os.networkInterfaces()))for(const n of nets||[])if(n.family==='IPv4'&&!n.internal)console.log(`LAN:   http://${n.address}:${PORT}`);

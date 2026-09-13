@@ -1,10 +1,13 @@
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export function updateResources(s){
- for(const [key,r] of Object.entries(s.resources)){
+ for(const r of Object.values(s.resources)){
   const scarcity=clamp(r.consumption/Math.max(.1,r.production)-1,-.5,4);
   const reservePressure=r.reserve<r.consumption*60?.15:0;
   r.price=clamp(r.price*(1+(Math.random()-.5)*.035+scarcity*.01+reservePressure*.01),5,1000);
-  const produced=Math.min(r.reserve,r.production);r.reserve=Math.max(0,r.reserve-produced);r.stock=(r.stock||r.consumption*3)+produced-r.consumption;
+  const produced=Math.min(r.reserve,r.production);
+  r.reserve=Math.max(0,r.reserve-produced);
+  const existingStock=Number.isFinite(r.stock)?r.stock:r.consumption*3;
+  r.stock=existingStock+produced-r.consumption;
   if(r.stock<0){r.stock=0;s.inflation+=.06;s.industryIndex-=.12}
  }
 }
