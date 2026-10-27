@@ -1,0 +1,16 @@
+// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
+import {observe} from '../../core.js';
+import {TECHNOLOGIES} from '../../../data/technologies.js';
+function raw_startResearch(s,id){const t=TECHNOLOGIES.find(x=>x.id===id);if(!t||s.research.active||s.research.completed.includes(id)||s.treasury<t.cost*.2)return false;s.treasury-=t.cost*.2;s.research.active={id,progress:0,paid:t.cost*.2};return true}
+function raw_updateResearch(s){
+ if(!s.research.active)return;
+ const t=TECHNOLOGIES.find(x=>x.id===s.research.active.id);
+ if(!t){s.research.active=null;return}
+ const monthlyCost=t.cost*.8/t.months;if(s.treasury<monthlyCost)return;
+ s.treasury-=monthlyCost;s.research.active.paid+=monthlyCost;s.research.active.progress+=100/t.months*(.75+s.budget.science/8+s.research.researchers/20);
+ if(s.research.active.progress>=100){if(!s.research.completed.includes(t.id))s.research.completed.push(t.id);s.research.active=null;s.productivity*=t.boost;s.techLevel=Math.min(100,s.techLevel+2);s.notifications.unshift({type:'achievement',text:`Research completed: ${t.name}`})}
+}
+
+export function startResearch(s,...args){return observe(s,'startResearch',()=>raw_startResearch(s,...args),args)}
+
+export function updateResearch(s,...args){return observe(s,'updateResearch',()=>raw_updateResearch(s,...args),args)}

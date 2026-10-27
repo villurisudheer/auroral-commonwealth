@@ -1,0 +1,1199 @@
+diff --git a/Auroral Commonwealth Stable v6/README.md b/Auroral Commonwealth Stable v6/README.md
+index 15db27f..e4a712c 100644
+--- a/Auroral Commonwealth Stable v6/README.md	
++++ b/Auroral Commonwealth Stable v6/README.md	
+@@ -122,3 +122,7 @@ See `TEST_REPORT.md` for the regression-test results.
+ ## Important note
+ 
+ AURORAL COMMONWEALTH is a fictional strategy/economy game. Country statistics, historical scenarios, political systems, resource values, rankings, and outcomes are simplified or fictionalized for gameplay and are not real-world forecasts.
++
++## Worldline Intelligence Suite 1.0 (additive extension)
++
++The normal game now includes Worldline Lab, Auroral Archives and Systems Observatory. Existing source lines are preserved; see [worldline/README.md](worldline/README.md) for architecture, launch/demo instructions and explicit coverage limits. Run `npm run validate` for original and extension regressions, and `node worldline/smoke.mjs` for HTTP/WebSocket smoke tests.
+diff --git a/Auroral Commonwealth Stable v6/main.js b/Auroral Commonwealth Stable v6/main.js
+index f68352d..30af364 100644
+--- a/Auroral Commonwealth Stable v6/main.js	
++++ b/Auroral Commonwealth Stable v6/main.js	
+@@ -163,3 +163,12 @@ function setAmbientMusic(on){try{if(on){audioCtx=audioCtx||new (window.AudioCont
+ function handleGlobalKeydown(e){const tag=e.target?.tagName;if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA'||e.ctrlKey||e.metaKey||e.altKey)return;if(e.key.toLowerCase()==='t'){e.preventDefault();cycleTheme();if(state)renderGame();return}if(!state)return;if(e.key===' '){e.preventDefault();setGameSpeed(state.speed===0?lastNonZeroSpeed:0);return}if(['0','1','2','5'].includes(e.key)){e.preventDefault();setGameSpeed(Number(e.key));return}if(e.key.toLowerCase()==='s'&&!(multiplayer&&mpRoom)){e.preventDefault();quickSave()}}
+ window.addEventListener('keydown',handleGlobalKeydown);systemDark?.addEventListener?.('change',()=>{if(prefs.theme==='system'){applyPrefs();if(state){renderGame()}else{drawAllCharts()}}});
+ function title(x){return x.replace(/([A-Z])/g,' $1').replace(/^./,c=>c.toUpperCase())}function escapeHTML(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
++
++// Auroral Worldline Intelligence Suite — additive hooks; original v6.1 lines preserved.
++import {installSuite} from './worldline/ui.js';
++const worldlineSuite=installSuite({read:()=>state,saveId:()=>activeSaveId,isMultiplayer:()=>!!(multiplayer&&mpRoom),pause:()=>{if(state&&!(multiplayer&&mpRoom))setGameSpeed(0)}});
++const worldlineBaseRender=renderGame;
++renderGame=function(){worldlineBaseRender();worldlineSuite.sync()};
++const worldlineBaseMonthStep=monthStep;
++monthStep=function(){return worldlineSuite.month(()=>worldlineBaseMonthStep())};
++worldlineSuite.sync();
+diff --git a/Auroral Commonwealth Stable v6/server.mjs b/Auroral Commonwealth Stable v6/server.mjs
+index b2b263b..9c451cc 100644
+--- a/Auroral Commonwealth Stable v6/server.mjs	
++++ b/Auroral Commonwealth Stable v6/server.mjs	
+@@ -133,6 +133,8 @@ server.listen(PORT,'0.0.0.0',()=>{
+   console.log(`\nAURORAL COMMONWEALTH MULTIPLAYER — Stable v6.1`);
+   console.log(`Build: ${BUILD_VERSION} • Countries: ${COUNTRIES.length} • Max players: ${MAX_PLAYERS}`);
+   console.log(`Local: http://127.0.0.1:${PORT}`);
++  try{ // LAN discovery may be unavailable in managed/container hosts.
+   for(const nets of Object.values(os.networkInterfaces()))for(const n of nets||[])if(n.family==='IPv4'&&!n.internal)console.log(`LAN:   http://${n.address}:${PORT}`);
++  }catch{console.warn('LAN address discovery unavailable; server remains accessible on its configured port.')}
+   console.log('\nFor internet multiplayer, deploy this Node app to a public host or port-forward this port.\n');
+ });
+diff --git a/Auroral Commonwealth Stable v6/validate.mjs b/Auroral Commonwealth Stable v6/validate.mjs
+index 439d6d6..d774a09 100644
+--- a/Auroral Commonwealth Stable v6/validate.mjs	
++++ b/Auroral Commonwealth Stable v6/validate.mjs	
+@@ -129,3 +129,6 @@ console.log('- invalid/negative economy actions are rejected safely');
+ console.log('- zero-stock resource regression passed');
+ console.log('- constant chart bounds regression passed');
+ console.log('- malformed/older save-state repair and all major view renders passed');
++
++// Additive Worldline regression suite; original v6.1 checks above remain intact.
++await import('./worldline/validate.mjs');
+diff --git a/Auroral Commonwealth Stable v6/worldline/README.md b/Auroral Commonwealth Stable v6/worldline/README.md
+new file mode 100644
+index 0000000..bdc1b57
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/README.md	
+@@ -0,0 +1,72 @@
++# Auroral Worldline Intelligence Suite 1.0
++
++An additive extension inside **Auroral Commonwealth Stable v6.1**. Open the normal game; the main menu and game sidebar provide the new modules. No separate application or launcher is used.
++
++## Launch and demonstration
++
++Requires Node 18 or newer. From `Auroral Commonwealth Stable v6/`:
++
++```sh
++npm start
++```
++
++Open `http://localhost:8000`. Generated engine adapters are committed, so normal launch requires no build step and no new dependencies.
++
++1. Start or load a single-player game. Open Government and change a tax or budget slider. Build or research using the existing screens, then advance the clock.
++2. Pause and open **Auroral Archives** in the sidebar. Filter the recorded decisions/monthly outcomes, expand an entry and inspect its supporting trace.
++3. Open **Systems Observatory**. Choose a changed variable, inspect its before/after values and observed inputs, or select an exact retained snapshot. The crisis button opens the corresponding historical records in reverse order.
++4. Open **Worldline Lab**. Choose the current nation, an existing single-player save or a recorded snapshot. Give the experiment a name, seed and a 3/6/12/24-month horizon.
++5. Configure one to three named alternatives using taxes, budget shares, infrastructure, industry investment, research or trade agreements. Month 0 applies before the first simulated month. Actions run through the original validated handlers. Policy clamping is reported as an effective value.
++6. Run. Compare the baseline with alternatives through real time-series charts, accessible data tables and absolute/relative deltas. Open a branch's Archives or Observatory from the results.
++7. Completed experiments and calculated results use separate browser storage. Load & replay reruns the saved inputs. Import/export uses JSON; archive export also offers CSV and eight deterministic dossier styles in printable HTML. Imported archives are explicitly user-supplied evidence. Imported experiment caches are discarded and recomputed.
++
++Opening the suite pauses single-player play; closing it leaves play paused until the player resumes. The native modal prevents background interaction and stops game keyboard shortcuts while its controls have focus.
++
++## Original-code preservation
++
++The existing source lines remain intact. Integration is appended to `main.js`; existing validator checks remain intact and the new tests are appended to `validate.mjs`. `server.mjs` receives two added guard lines around its original LAN enumeration after an actual `os.networkInterfaces()` startup failure was reproduced in this managed environment. No original line is deleted or replaced, and historical edition directories are untouched.
++
++The country roster, existing UI views, multiplayer protocol, save slots, budget/financial safeguards and ordinary live-game formulas retain their original implementations. The current source has no explicit RBA/RBS simulation subsystem to extend; this suite does not invent or merge one.
++
++## Architecture
++
++- `core.js`: weakly associated RNG/observer contexts outside game state, normalized event/trace IDs, cloning, metrics, diagnostics and grounded document templates.
++- `engine.js`: isolated branch execution, validated scheduling, engine-version checks and explicit event-choice policy. The monthly order is regression-checked against `main.js`.
++- `build.mjs`: reads the actual engine source; generates adapters under `generated/`, redirecting simulation `Math.random()` calls to a per-state random source and wrapping executed functions for observation. Formulas are not reimplemented. Global randomness is never replaced. Originals are never written by this generator.
++- `generated/`: checked-in adapters, source hashes and engine identity. Changing the original engine requires regenerating these adapters. Source and overlay fingerprints prevent replay under a different simulator.
++- `storage.js`: independent versioned JSON storage, validation, bounded retention, archive import/export and CSV.
++- `ui.js` / `style.css`: navigation and modal workstation using the existing charts, CSS theme variables and validated game handlers. No framework or paid API.
++- `validate.mjs` / `smoke.mjs`: deterministic and integrity regressions plus HTTP/WebSocket checks.
++
++Live monthly steps and UI decisions are observed around their actual execution. Simulated branches additionally record individual function boundaries. These boundaries prove the recorded transition was executed; they do not quantify the isolated contribution of each input.
++
++When the base engine changes:
++
++```sh
++node worldline/build.mjs
++npm run validate
++node worldline/smoke.mjs
++```
++
++The generator changes only extension-owned files. Check in regenerated adapters with the updated source. The validator rejects stale adapters and drift in monthly execution order.
++
++## Randomness audit
++
++Adapted simulation calls: economy (growth shock, unemployment), resource prices, trade exports/imports, industry levels, diplomatic negotiations, event selection and the trade-event negotiation choice in `data/events.js`. Country-creator endowments and save-ID fallbacks retain ordinary randomness; they are initialization/identifier code outside branch advancement. Experiments clone already-created initial endowments.
++
++## Explicit modelling limits
++
++- Baseline is a controlled continuation under the same event strategy as alternatives, not a prediction of a player's unrecorded future decisions. The cheapest affordable event option is resolved before the next monthly step; original option order breaks ties. New final-month events remain pending.
++- Identical inputs, seed and engine fingerprint replay identically. A random-consuming action can shift subsequent draws; identical exogenous shock alignment across different action histories is not guaranteed.
++- Experiments reuse all existing monthly systems, including research, achievements, resources and national condition. They do not simulate additional human players or invent autonomous diplomatic decisions or a new banking model.
++- Worldline experiments are disabled during multiplayer. Server authority remains unchanged. Multiplayer archival instrumentation is deferred; the suite labels this absence and retains only local single-player/branch collections.
++- Live traces expose whole-month transitions and observed UI decisions. Internal function traces are available in branch simulations. Per-term mathematical attribution, aggregate dependency inference, and reconstructed states between snapshots are deferred.
++- Historical records start when the extension first observes a campaign. Game-save IDs link reloaded campaigns to their sidecar ledgers; loading a pre-extension slot begins recording there. Old decisions are not reconstructed.
++- Arrays such as achievement lists and completed research are retained in exact state snapshots; the scalar change view does not diff every array element. Notifications are not treated as an authoritative complete historical ledger.
++- Dossiers are deterministic fictional documents, not generative AI. Each style selects actual relevant records. No API key or external AI service is required.
++- Each ledger retains at most 320 events, 800 traces and 12 exact snapshots. Up to five campaigns and five experiment input sets are retained. The overall store is bounded near 3.8 MB: older result caches are removed first, then old archive detail if required. Inputs remain replayable. Browser quota failures remain visible; export before clearing browser data. Retained references may point outside the current window and are reported unavailable.
++- Imported archive records are not cryptographically authenticated. Validation limits size/shape and escapes rendered text; reports preserve the imported provenance label.
++
++## Validation status
++
++See [TEST_REPORT.md](TEST_REPORT.md). Real browser layout and end-to-end UI interaction remain unverified in this environment; HTTP delivery and model/unit regressions are verified. Do not equate HTTP asset checks with browser rendering tests.
+diff --git a/Auroral Commonwealth Stable v6/worldline/TEST_REPORT.md b/Auroral Commonwealth Stable v6/worldline/TEST_REPORT.md
+new file mode 100644
+index 0000000..6db4d98
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/TEST_REPORT.md	
+@@ -0,0 +1,56 @@
++# Worldline Intelligence Suite 1.0 — validation record
++
++Tested 27 October 2026 against base commit `fba3feaaa175a27c535420e44467108381a8b12c` with Node **24.22.1**. Node 18+ is the target; a separate Node 18 execution was not available. No new package dependencies were installed in the game.
++
++## Executed checks
++
++| Command/check | Observed result |
++|---|---|
++| `node worldline/build.mjs` | PASS: 16 engine/data modules generated from the existing source; original source files were not written by the generator. |
++| `npm run validate` | PASS: original v6.1 checks and 23 new extension regression groups. |
++| JS/MJS syntax checks | PASS: the original validator walks every JS/MJS file, including all new and generated files. |
++| `node worldline/smoke.mjs` | PASS: server startup, health endpoint, 45 application/module assets plus extension CSS, WebSocket room/capacity and authoritative actions. |
++| `git diff --check` | PASS after removing a trailing space introduced on an added guard line. |
++| Original-line preservation audit (`git diff --numstat`) | PASS: no original line deleted or replaced; all changes limited to Stable v6. Historical editions unchanged. |
++
++The original validator confirms 202 unique country/scenario IDs, all-country 12-month finite-value runs, policy mappings/clamps, invalid financial/resource actions, zero-stock behavior, chart bounds, malformed-save repair and rendering of the existing view markup.
++
++## New regression groups
++
++1. Seeded source replay without replacing global randomness.
++2. Complete experiment isolation from source state and existing save data.
++3. Identical-action branches and whole-experiment replay produce identical complete results.
++4. Validated policy changes alter calculated engine outcomes.
++5. Scheduled policy timing and effective clamped values.
++6. Trace inputs/before/after/deltas and event references match actual execution.
++7. Genuine changed decisions and rejected actions recorded; unchanged decisions not duplicated.
++8. Observer errors cannot replay or prevent engine execution.
++9. Seeded randomness in event-choice effects.
++10. Finite metrics and bounded ledgers at 3/6/12/24 months.
++11. All 202 countries execute the isolated monthly sequence.
++12. JSON experiment roundtrip preserves replay.
++13. Archive JSON/CSV and grounded deterministic report behavior.
++14. Fresh storage adapter reload retains experiment inputs, results and ledger.
++15. Malformed imports, future versions, unsafe object keys and multiplayer source states rejected.
++16. Invalid schedules, unsupported actions and prototype keys rejected.
++17. Corrupt storage/quota failures remain graceful.
++18. Zero/missing-baseline metric comparisons remain safe.
++19. Cancellation leaves source state unchanged.
++20. Generated adapters are fresh and simulation random calls are audited.
++21. Four-branch, 24-month results fit the import/file validation bound; imported caches are discarded.
++22. Retention trims computed caches while keeping replay inputs.
++23. Monthly sequence matches the actual active game; overlay/engine fingerprints are fresh.
++
++## HTTP/WebSocket checks
++
++The smoke script starts the actual server on a temporary port and terminates its own server/client processes afterward. It checks the actual module graph over HTTP and verifies `/health` reports 202 countries and a 20-player cap. Twenty human clients join one room and client 21 receives the full-room rejection. A started room accepts an authoritative valid tax update and rejects a negative loan and an unknown policy key.
++
++The first plain server startup reproduced an existing `uv_interface_addresses` failure inside `os.networkInterfaces()` in this environment. The two added try/catch guard lines were then tested successfully through the actual smoke script. Health, room authority and capacity logic remain unchanged.
++
++## Unverified / limitations
++
++Real browser rendering and end-to-end clicks are **not verified**. A local Chromium install failed because its browser download was empty/truncated; the connected browser could not attach to this originating context, and the cloud browser reached its own localhost service rather than this workspace server. No screenshot or visual QA claim is made. HTTP asset delivery and view-markup validation do not prove visual layout or interactive browser correctness.
++
++UI source was reviewed for modal focus/keyboard handling, escaped imported text, meaningful empty/error states, live progress and theme-variable reuse. Full browser tests for navigation, file pickers, refreshes, responsive layout, light/high-contrast mode and export downloads remain necessary before merging this draft release.
++
++Function-level tracing is complete only within isolated Worldlines; live play records whole monthly transitions and supported UI actions. Multiplayer archival instrumentation, quantified per-term causal attribution and reconstructed historical states are deferred and disclosed in the interface/documentation.
+diff --git a/Auroral Commonwealth Stable v6/worldline/build.mjs b/Auroral Commonwealth Stable v6/worldline/build.mjs
+new file mode 100644
+index 0000000..6ef4bd3
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/build.mjs	
+@@ -0,0 +1,45 @@
++// Additive overlay: originals are read, hashed and never written.
++import fs from 'node:fs';
++import path from 'node:path';
++import crypto from 'node:crypto';
++import {fileURLToPath} from 'node:url';
++const here=path.dirname(fileURLToPath(import.meta.url)), root=path.dirname(here);
++const generated=path.join(here,'generated');
++const selected=['data/events.js',...fs.readdirSync(path.join(root,'game')).filter(x=>x.endsWith('.js')).map(x=>'game/'+x)];
++const wrapped=new Set(['computeMonthlyEconomy','applyGovernmentEffects','setPolicyValue','borrow','repayDebt','updateResources','updateEnergy','updateTrade','signTradeAgreement','buyResource','exportResource','startResearch','updateResearch','negotiate','sanction','maybeEvent','resolveEvent','checkAchievements','updateCollapse','build','investIndustry','updateIndustries','fundDevelopmentProgram','developmentBankLoan','researchPartnership','humanitarianAid']);
++const hashes={};
++for(const file of selected){
++ const original=fs.readFileSync(path.join(root,file),'utf8');
++ hashes[file]=crypto.createHash('sha256').update(original).digest('hex');
++ let source=original, rngImport='';
++ // Only simulation calls are redirected; menu/resource creation and save IDs retain normal RNG.
++ const simulation=file!=='main.js'&&file!=='game/saveSystem.js';
++ if(simulation&&source.includes('Math.random()')){
++  source=source.replaceAll('Math.random()','stateRandom(s)');
++  const rng=path.relative(path.dirname(path.join(generated,file)),path.join(here,'core.js')).split(path.sep).join('/');
++  rngImport=`import {stateRandom} from '${rng}';\n`;
++ }
++ // Keep import resolution identical except for the explicitly generated engine modules.
++ source=source.replace(/from (['"])(\.[^'"]+)\1/g,(_,q,rel)=>{
++  const target=path.resolve(path.dirname(path.join(root,file)),rel), key=path.relative(root,target).split(path.sep).join('/');
++  const dest=selected.includes(key)?path.join(generated,key):target;
++  let url=path.relative(path.dirname(path.join(generated,file)),dest).split(path.sep).join('/');
++  if(!url.startsWith('.'))url='./'+url;
++  return `from ${q}${url}${q}`;
++ });
++ source=rngImport+source;
++ const names=[];
++ source=source.replace(/export function (\w+)\(/g,(all,name)=>{if(!wrapped.has(name))return all;names.push(name);return `function raw_${name}(`});
++ if(names.length){
++  const core=path.relative(path.dirname(path.join(generated,file)),path.join(here,'core.js')).split(path.sep).join('/');
++  source=`import {observe} from '${core}';\n`+source;
++  for(const name of names)source+=`\nexport function ${name}(s,...args){return observe(s,'${name}',()=>raw_${name}(s,...args),args)}\n`;
++ }
++ const output=path.join(generated,file);fs.mkdirSync(path.dirname(output),{recursive:true});
++ fs.writeFileSync(output,'// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.\n'+source);
++}
++const overlayHashes=Object.fromEntries(['engine.js','core.js','build.mjs'].map(file=>[file,crypto.createHash('sha256').update(fs.readFileSync(path.join(here,file))).digest('hex')]));
++const digest=crypto.createHash('sha256').update(JSON.stringify({hashes,overlayHashes})).digest('hex');
++fs.writeFileSync(path.join(generated,'version.js'),`export const ENGINE_VERSION=${JSON.stringify('6.1.0+worldline.1.0.0:'+digest)};\n`);
++fs.writeFileSync(path.join(generated,'manifest.json'),JSON.stringify({overlay:'1.0.0',engine:'6.1.0',digest,hashes,overlayHashes},null,2));
++console.log(`Worldline overlay built: ${selected.length} generated modules; original files unchanged.`);
+diff --git a/Auroral Commonwealth Stable v6/worldline/core.js b/Auroral Commonwealth Stable v6/worldline/core.js
+new file mode 100644
+index 0000000..e2d9820
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/core.js	
+@@ -0,0 +1,88 @@
++// Shared causal records. Runtime bindings live outside game state and saves.
++export const SCHEMA=1;
++export const LIMITS={events:320,traces:800,snapshots:12,experiments:5,bytes:4_000_000};
++const contexts=new WeakMap();
++export const clone=x=>structuredClone(x);
++export const uniqueId=()=>globalThis.crypto?.randomUUID?.()||`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
++export const tick=s=>s.date.year*12+s.date.month;
++export const dateLabel=d=>`${d.year}-${String(d.month+1).padStart(2,'0')}`;
++export function seeded(seed){let a=seed>>>0;return ()=>{a=(a+0x6D2B79F5)|0;let t=Math.imul(a^a>>>15,1|a);t^=t+Math.imul(t^t>>>7,61|t);return ((t^t>>>14)>>>0)/4294967296}}
++export function stateRandom(s){return contexts.get(s)?.rng?.()??Math.random()}
++export function ledger(id,scope='single-player'){return {schema:SCHEMA,id,scope,seq:0,events:[],traces:[],snapshots:[]}}
++export function attach(s,book,{rng,onChange,experimentId=null,branchId=null}={}){
++ contexts.set(s,{book,rng,onChange,experimentId,branchId});return s;
++}
++export function detach(s){contexts.delete(s)}
++const safeKeys=new Set(['__proto__','prototype','constructor']);
++export function flatten(value,prefix='',out={},depth=0){
++ if(depth>7)return out;
++ if(typeof value==='number'||typeof value==='string'||typeof value==='boolean'||value===null){out[prefix]=value;return out}
++ if(!value||typeof value!=='object'||Array.isArray(value))return out;
++ for(const [k,v] of Object.entries(value)){if(safeKeys.has(k)||['history','notifications','settings'].includes(k))continue;flatten(v,prefix?prefix+'.'+k:k,out,depth+1)}
++ return out;
++}
++const METRICS=[
++ ['gdp','GDP','B currency'],['lastMonthly.growth','Monthly GDP growth','%'],['treasury','Treasury','B currency'],['debt','Sovereign debt','B currency'],['inflation','Inflation','%'],['unemployment','Unemployment','%'],['consumerConfidence','Consumer confidence','index'],['lastMonthly.revenue','Monthly revenue','B currency'],['lastMonthly.expenses','Monthly expenditure','B currency'],['lastMonthly.interest','Monthly interest','B currency'],['energy.production','Energy production','model units'],['energy.consumption','Energy consumption','model units'],['industryIndex','Industry','index'],['infra','Infrastructure','index'],['techLevel','Technology','index'],['trade.balance','Trade balance','B currency'],['approval','Public approval','%'],['stability','Political stability','%']
++];
++export const metrics=METRICS;
++export function sample(s){const flat=flatten(s), values={};for(const [key] of METRICS)values[key]=Number.isFinite(flat[key])?flat[key]:null;for(const [key,r] of Object.entries(s.resources))values['resources.'+key+'.stock']=Number.isFinite(r.stock)?r.stock:null;return {date:clone(s.date),values,crisis:s.collapseStage}}
++export function metricList(s){return [...METRICS,...Object.keys(s.resources).map(k=>['resources.'+k+'.stock',k+' stock','model units'])]}
++const INPUTS={
++ monthStep:['gdp','taxes','budget','energy','trade','resources','industries','research','infra','techLevel','education','industryIndex','consumerConfidence','debt','inflation','buildings','approval','unemployment','healthcare','collapseStage'],
++ computeMonthlyEconomy:['gdp','taxes','budget','energy','trade','infra','techLevel','education','industryIndex','consumerConfidence','debt','inflation','buildings','approval','unemployment','healthcare'],
++ applyGovernmentEffects:['budget','taxes','inflation','unemployment','approval','stability','healthcare'],
++ updateResources:['resources'],updateEnergy:['energy','gdp','population','industryIndex','techLevel'],updateTrade:['trade','taxes','techLevel','infra','education','industryIndex','gdp'],updateIndustries:['industries','productivity','techLevel','inflation','unemployment','gdp'],updateResearch:['research','budget','treasury'],updateCollapse:['debt','gdp','inflation','unemployment','approval','stability','energy'],maybeEvent:['pendingEvent'],resolveEvent:['pendingEvent','treasury']
++};
++const monthly=new Set(['computeMonthlyEconomy','applyGovernmentEffects','updateResources','updateEnergy','updateTrade','updateIndustries','updateResearch','checkAchievements','updateCollapse','maybeEvent','monthStep']);
++function trim(a,n){if(a.length>n)a.splice(0,a.length-n)}
++export function record(book,entry){const item={schema:SCHEMA,id:`${book.id}:e${++book.seq}`,...entry};book.events.push(item);trim(book.events,LIMITS.events);return item}
++export function observe(s,rule,execute,args=[],captured=null){
++ const ctx=contexts.get(s);if(!ctx)return execute();
++ // Observer failures must never replay or prevent the engine operation.
++ let before,inputs;try{before=captured?.before??flatten(s);inputs=captured?.inputs??{};if(!captured)for(const k of INPUTS[rule]||['treasury','debt','taxes','budget'])inputs[k]=clone(s[k]??null)}catch{}
++ const result=execute();
++ try{
++  if(!before)return result;
++  const after=flatten(s),changes={};for(const key of new Set([...Object.keys(before),...Object.keys(after)])){if(['date.month','date.year','speed'].includes(key))continue;if(before[key]!==after[key]){const a=before[key]??null,b=after[key]??null;changes[key]={before:a,after:b,delta:typeof a==='number'&&typeof b==='number'?b-a:null}}}
++  const action=!monthly.has(rule),rejected=action&&(result===false||result===0);
++  if(Object.keys(changes).length||rejected||rule==='maybeEvent'){
++   const book=ctx.book, category=rejected?'diagnostic':Object.hasOwn(changes,'collapseStage')?'crisis':rule==='maybeEvent'||rule==='resolveEvent'?'world-event':action?'decision':'simulation';
++   const entry=record(book,{tick:tick(s),date:clone(s.date),countryId:s.countryId,category,source:rule,kind:action?'player-action':(rule==='maybeEvent'||rule==='monthStep')?'periodic-summary':'engine-rule',description:rejected?`Rejected ${rule}`:rule==='maybeEvent'?`Monthly state recorded${s.pendingEvent?' • pending '+s.pendingEvent.id:''}`:`${rule}: ${Object.keys(changes).length} recorded changes${changes.collapseStage?' • national condition '+changes.collapseStage.after:''}`,args:clone(args),changes,experimentId:ctx.experimentId,branchId:ctx.branchId});
++   if(rule==='maybeEvent'||rule==='monthStep'){
++    book.snapshots.push({id:`${book.id}:s${book.seq}`,eventId:entry.id,tick:tick(s),date:clone(s.date),state:clone(s)});trim(book.snapshots,LIMITS.snapshots);
++   }
++   if(rule!=='maybeEvent'){
++    const trace={id:`${book.id}:t${book.seq}`,eventId:entry.id,rule,tick:entry.tick,date:entry.date,countryId:s.countryId,inputs,changes,evidence:'Executed function boundary; individual input contribution is not quantified.'};
++    book.traces.push(trace);trim(book.traces,LIMITS.traces);entry.traceId=trace.id;
++   }
++   ctx.onChange?.(book);
++  }
++ }catch(error){ctx.lastError=String(error?.message||error)}
++ return result;
++}
++export function diagnostics(s){const f=flatten(s),out=[];for(const [k,v] of Object.entries(f))if(typeof v==='number'&&!Number.isFinite(v))out.push({key:k,issue:'Non-finite value'});if(s.energy.production<s.energy.consumption)out.push({key:'energy',issue:'Production below consumption'});for(const [k,r] of Object.entries(s.resources))if(r.stock===0&&r.production<r.consumption)out.push({key:'resources.'+k,issue:'Stock exhausted; production below use'});if(s.collapseStage!=='Stable')out.push({key:'collapseStage',issue:s.collapseStage});if(Math.abs(s.lastMonthly.growth)>1)out.push({key:'lastMonthly.growth',issue:'Monthly GDP change exceeds 1%'});return out}
++export function difference(a,b){if(!Number.isFinite(a)||!Number.isFinite(b))return {absolute:null,percent:null};return {absolute:b-a,percent:a===0?null:(b-a)/Math.abs(a)*100}}
++export function report(book,type='Economic assessment'){
++ const financial=e=>Object.keys(e.changes||{}).some(k=>/^(gdp|debt|treasury|inflation|unemployment|lastMonthly|taxes|budget|trade)/.test(k));
++ const diplomatic=e=>/negotiate|sanction|TradeAgreement|cw|Partnership|Aid|Development|humanitarian|commonwealth/i.test(e.source);
++ const crisis=e=>e.category==='crisis'||e.category==='diagnostic'||Object.hasOwn(e.changes||{},'collapseStage');
++ const choices={
++  'National history':['HISTORICAL DIRECTORATE','Chronology of retained national decisions, model outcomes and turning points.',()=>true],
++  'Classified intelligence briefing':['STRATEGIC INTELLIGENCE BUREAU','Recorded decisions, incidents and national-condition changes for command review.',e=>crisis(e)||['decision','world-event'].includes(e.category)],
++  'Economic assessment':['TREASURY ANALYSIS OFFICE','Observed fiscal and economic transitions. Values retain the engine’s native units.',financial],
++  'Diplomatic memorandum':['FOREIGN RELATIONS SECRETARIAT','Recorded diplomatic and Commonwealth actions. No unrecorded treaty or conflict is inferred.',diplomatic],
++  'Crisis investigation':['NATIONAL RESILIENCE COMMISSION','Crisis boundaries and the retained records immediately preceding them. Sequence alone does not establish cause.',()=>true],
++  'Newspaper report':['COMMONWEALTH CHRONICLE','Recent recorded developments from the simulation. This is a fictional news digest.',e=>e.category!=='simulation'],
++  'Commonwealth historical record':['COMMONWEALTH RECORDS COUNCIL','Retained cooperation, development, market-access and institutional decisions.',diplomatic],
++  'Alternate-history chronicle':['WORLDLINE RESEARCH DIRECTORATE','Recorded branch chronology. These events describe an isolated experiment when its scope is isolated-worldline.',()=>true]
++ };
++ const [office,intro,filter]=choices[type]||choices['Economic assessment'];
++ let entries=book.events.filter(filter);
++ if(type==='Newspaper report')entries=entries.slice(-12);
++ if(type==='Crisis investigation'){const indices=new Set();book.events.forEach((e,i)=>{if(crisis(e))for(let j=Math.max(0,i-6);j<=i;j++)indices.add(j)});entries=book.events.filter((_,i)=>indices.has(i))}
++ const lines=[`AURORAL COMMONWEALTH / ${type.toUpperCase()}`,office,`Record ${book.id} • ${book.scope}`,intro,`Source: ${book.events.length} retained entries. Earlier history may be unavailable.`,type==='Classified intelligence briefing'?'Classification: FICTIONAL / COMMAND EYES ONLY':'Classification: FICTIONAL / PUBLIC RECORD',''];
++ if(book.scope==='imported-record')lines.push('PROVENANCE: Imported user-supplied records; not authenticated engine evidence.','');
++ if(!entries.length)lines.push('No matching events exist in the retained record.');
++ for(const e of entries){lines.push(`[${dateLabel(e.date)}] ${e.id} / ${e.countryId} / ${e.category}: ${e.description}`);for(const [key,c] of Object.entries(e.changes||{}))lines.push(`  ${key}: ${c.before} → ${c.after}${Number.isFinite(c.delta)?` (Δ ${c.delta.toFixed(4)})`:''}`)}
++ lines.push('','ASSESSMENT: These records establish sequence and observed changes. Function-level traces do not isolate each input’s causal contribution. No unrecorded treaties, conflicts or decisions are inferred.');return lines.join('\n');
++}
+diff --git a/Auroral Commonwealth Stable v6/worldline/engine.js b/Auroral Commonwealth Stable v6/worldline/engine.js
+new file mode 100644
+index 0000000..983275d
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/engine.js	
+@@ -0,0 +1,75 @@
++import {repairState,snapshot,advanceDate} from './generated/game/state.js';
++import {computeMonthlyEconomy} from './generated/game/economy.js';
++import {applyGovernmentEffects,setPolicyValue} from './generated/game/government.js';
++import {updateResources,updateEnergy} from './generated/game/resources.js';
++import {updateTrade,signTradeAgreement,buyResource,exportResource} from './generated/game/trade.js';
++import {updateIndustries,investIndustry} from './generated/game/industries.js';
++import {updateResearch,startResearch} from './generated/game/technology.js';
++import {checkAchievements} from './generated/game/achievements.js';
++import {updateCollapse} from './generated/game/collapse.js';
++import {maybeEvent,getPending,resolveEvent} from './generated/game/events.js';
++import {build} from './generated/game/infrastructure.js';
++import {negotiate,sanction} from './generated/game/diplomacy.js';
++import {ENGINE_VERSION} from './generated/version.js';
++import {clone,ledger,attach,detach,seeded,sample,diagnostics,SCHEMA,LIMITS,uniqueId} from './core.js';
++export {ENGINE_VERSION};
++const actions={build,investIndustry,startResearch,signTradeAgreement,buyResource,exportResource,negotiate,sanction};
++export function validateJSON(value){
++ let count=0;const visit=(x,depth)=>{if(++count>1_000_000||depth>14)throw Error('Data is too complex');if(typeof x==='number'&&(!Number.isFinite(x)||Math.abs(x)>1e12))throw Error('Invalid numeric value');if(typeof x==='string'&&x.length>16000)throw Error('Text field too long');if(x&&typeof x==='object'){for(const [k,v] of Object.entries(x)){if(['__proto__','prototype','constructor'].includes(k))throw Error('Unsafe object key');visit(v,depth+1)}}else if(!['string','number','boolean'].includes(typeof x)&&x!==null)throw Error('Non-JSON data')};
++ visit(value,0);if(JSON.stringify(value).length>LIMITS.bytes)throw Error('Data exceeds 4 MB limit');return value;
++}
++export function prepareState(source){
++ validateJSON(source);if(!source||typeof source!=='object'||Array.isArray(source)||source.multiplayer||typeof source.countryId!=='string'||!source.countryId||!source.date||!source.resources||typeof source.resources!=='object'||Array.isArray(source.resources)||!source.industries||typeof source.industries!=='object'||Array.isArray(source.industries)||!Number.isFinite(source.gdp)||source.gdp<=0)throw Error('A valid single-player state is required');
++ const s=repairState(clone(source));s.speed=0;s.autosave=false;return s;
++}
++export function validateAction(a,horizon){
++ if(!a||!Number.isInteger(a.month)||a.month<0||a.month>=horizon)throw Error('Action month is outside the experiment');
++ if(a.type==='policy'){if(!['tax','budget'].includes(a.group)||typeof a.key!=='string'||!Number.isFinite(a.value))throw Error('Invalid policy');}
++ else if(!Object.hasOwn(actions,a.type)||!Array.isArray(a.args)||a.args.length>2||a.args.some(x=>!['number','string'].includes(typeof x)))throw Error('Unsupported experiment action');
++ return a;
++}
++export function applyAction(s,a){
++ if(a.type==='policy')return setPolicyValue(s,a.group,a.key,a.value);
++ if(a.type==='negotiate'||a.type==='sanction'){if(typeof a.args[0]!=='string'||!Object.hasOwn(s.diplomacy.relations,a.args[0]))return false}
++ return actions[a.type]?.(s,...a.args)!==false;
++}
++export function createExperiment(source,{id=uniqueId(),name='Worldline experiment',seed=2035,horizon=12,branches=[{id:'alternative',name:'Alternative policy',actions:[]}]}={}){
++ return validateExperiment({schema:SCHEMA,kind:'auroral-worldline',engineVersion:ENGINE_VERSION,id,name,seed,horizon,baseline:prepareState(source),branches});
++}
++export function validateExperiment(value){
++ validateJSON(value);if(value?.schema!==SCHEMA||value?.kind!=='auroral-worldline'||value.engineVersion!==ENGINE_VERSION)throw Error('Unsupported experiment schema or engine version');
++ if(typeof value.id!=='string'||!value.id||value.id.length>100||typeof value.name!=='string'||value.name.length>100)throw Error('Invalid experiment identity');
++ if(!Number.isInteger(value.seed)||value.seed<0||value.seed>0xffffffff||![3,6,12,24].includes(value.horizon))throw Error('Invalid seed or horizon');
++ if(!Array.isArray(value.branches)||value.branches.length<1||value.branches.length>3)throw Error('Choose one to three alternative branches');
++ const ids=new Set(['baseline']);for(const b of value.branches){if(typeof b.id!=='string'||!b.id||b.id.length>100||ids.has(b.id)||typeof b.name!=='string'||b.name.length>100||!Array.isArray(b.actions)||b.actions.length>48)throw Error('Invalid branch');ids.add(b.id);for(const a of b.actions){validateAction(a,value.horizon);if(a.type==='policy'){const state=prepareState(value.baseline);if(!setPolicyValue(state,a.group,a.key,a.value))throw Error('Invalid policy key')}}}
++ const result=clone(value);result.baseline=prepareState(value.baseline);return result;
++}
++export function step(s){
++ // Exact execution order audited against main.js:monthStep and server.mjs:tickState.
++ computeMonthlyEconomy(s);applyGovernmentEffects(s);updateResources(s);updateEnergy(s);updateTrade(s);updateIndustries(s);updateResearch(s);checkAchievements(s);updateCollapse(s);advanceDate(s);snapshot(s);maybeEvent(s);
++}
++export async function runExperiment(raw,{onProgress=()=>{},yieldControl=()=>new Promise(r=>setTimeout(r,0)),signal}={}){
++ const exp=validateExperiment(raw),results=[];
++ const branches=[{id:'baseline',name:'Original baseline',actions:[]},...exp.branches];
++ let done=0;const total=branches.length*exp.horizon;
++ for(const b of branches){
++  const s=prepareState(exp.baseline),book=ledger(`${exp.id}/${b.id}`,'isolated-worldline');
++  attach(s,book,{rng:seeded(exp.seed),experimentId:exp.id,branchId:b.id});
++  const series=[sample(s)],applied=[];
++  try{
++   for(let m=0;m<exp.horizon;m++){
++    if(signal?.aborted)throw Error('Simulation cancelled');
++    for(const a of b.actions.filter(x=>x.month===m)){
++     const before=clone(a);const ok=applyAction(s,a);applied.push({...before,accepted:ok,effectiveValue:a.type==='policy'?(a.group==='tax'?s.taxes:s.budget)[a.key]:null,appliedDate:clone(s.date)});
++    }
++    // Explicit, identical event strategy: cheapest affordable option (original order breaks ties).
++    const e=getPending(s);if(e){const choices=e.choices.map((c,i)=>({c,i})).filter(x=>x.c.cost<=s.treasury).sort((a,b)=>a.c.cost-b.c.cost);if(choices.length)resolveEvent(s,choices[0].i)}
++    step(s);if(diagnostics(s).some(d=>d.issue==='Non-finite value'))throw Error('Engine produced a non-finite value');
++    series.push(sample(s));done++;onProgress({done,total,branch:b.name,month:m+1});await yieldControl();
++   }
++   results.push({id:b.id,name:b.name,series,applied,ledger:book,finalState:clone(s)});
++  }finally{detach(s)}
++ }
++ return {schema:SCHEMA,experimentId:exp.id,engineVersion:ENGINE_VERSION,results,eventStrategy:'Cheapest affordable event choice, in definition order on ties; resolved before the next monthly step. New final-month events remain pending.'};
++}
++export function parseExperiment(text){if(typeof text!=='string'||text.length>LIMITS.bytes)throw Error('Experiment file exceeds size limit');const parsed=JSON.parse(text);if(parsed&&typeof parsed==='object')delete parsed.result;return validateExperiment(parsed)}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/data/events.js b/Auroral Commonwealth Stable v6/worldline/generated/data/events.js
+new file mode 100644
+index 0000000..51f0042
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/data/events.js	
+@@ -0,0 +1,22 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++import {stateRandom} from '../../core.js';
++export const EVENT_DEFS=[
++ {id:'energy_crisis',title:'Global Energy Crisis',p:.045,text:'Global energy prices surge as supply tightens.',choices:[
++  {label:'Subsidize domestic energy',cost:500,effect:s=>{s.energy.capacity+=4;s.approval+=2;s.inflation+=.3}},
++  {label:'Import additional energy',cost:300,effect:s=>{s.trade.imports+=120;s.energy.imported+=6}},
++  {label:'Absorb the shock',cost:0,effect:s=>{s.industryIndex-=4;s.approval-=3;s.inflation+=1.2}}]},
++ {id:'breakthrough',title:'Technology Breakthrough',p:.035,text:'Researchers report a major productivity breakthrough.',choices:[
++  {label:'Commercialize rapidly',cost:350,effect:s=>{s.techLevel+=2;s.productivity+=.025}},
++  {label:'Keep it strategic',cost:180,effect:s=>{s.research.points+=18;s.stability+=1}}]},
++ {id:'drought',title:'Severe Drought',p:.03,text:'Agricultural regions face a major water shortage.',choices:[
++  {label:'Emergency irrigation program',cost:420,effect:s=>{s.resources.food.reserve+=120;s.resources.water.reserve-=150;s.approval+=1}},
++  {label:'Import food',cost:260,effect:s=>{s.trade.imports+=100;s.resources.food.reserve+=260}},
++  {label:'Ration supplies',cost:20,effect:s=>{s.approval-=5;s.inflation+=.7}}]},
++ {id:'trade_boom',title:'Trade Opportunity',p:.04,text:'A Commonwealth member offers a favorable long-term market access deal.',choices:[
++  {label:'Sign the agreement',cost:80,effect:s=>{s.trade.agreements+=1;s.trade.exports+=150;s.diplomacy.reputation+=3}},
++  {label:'Demand better terms',cost:0,effect:s=>{if(stateRandom(s)<.5){s.trade.exports+=220;s.diplomacy.reputation+=1}else{s.diplomacy.reputation-=2}}}]},
++ {id:'banking',title:'Banking Stress',p:.025,text:'Credit losses spread through the domestic banking system.',choices:[
++  {label:'Recapitalize banks',cost:650,effect:s=>{s.stability+=3;s.debt+=250}},
++  {label:'Limited guarantees',cost:260,effect:s=>{s.stability-=1;s.unemployment+=.4}},
++  {label:'No bailout',cost:0,effect:s=>{s.stability-=5;s.gdp*=.985;s.unemployment+=1.2}}]}
++];
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/achievements.js b/Auroral Commonwealth Stable v6/worldline/generated/game/achievements.js
+new file mode 100644
+index 0000000..11f01ab
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/achievements.js	
+@@ -0,0 +1,12 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++import {observe} from '../../core.js';
++import {COUNTRIES} from '../../../data/countries.js';
++const defs=[
++ ['industrial','Industrial Giant',s=>s.industryIndex>=140],['miracle','Economic Miracle',s=>s.history.length>=24&&s.history.slice(-24).every((x,i,a)=>i===0||x.gdp>=a[i-1].gdp)],['debtfree','Debt Free',s=>s.debt<=1],['energy','Energy Independent',s=>s.energy.production>=s.energy.consumption&&s.energy.imported===0],['tech','Tech Superpower',s=>s.techLevel>=98],['resource','Resource Titan',s=>s.trade.exports>s.gdp*.28],['survivor','Crisis Survivor',s=>s.collapseStage==='Stable'&&s.history.some(h=>h.inflation>20)],['leader','Commonwealth Leader',s=>playerPower(s)>Math.max(...COUNTRIES.map(countryPower))]
++];
++const countryPower=c=>c.gdp/500+c.tech*.24+c.military*.2+c.infra*.16+Math.log10(c.population+1)*8;
++const playerPower=s=>s.gdp/500+s.techLevel*.24+s.military*.2+s.infra*.16+Math.log10(s.population+1)*8;
++function raw_checkAchievements(s){for(const [id,name,test] of defs){if(!s.achievements.includes(id)&&test(s)){s.achievements.push(id);s.notifications.unshift({type:'achievement',text:`Achievement unlocked: ${name}`})}}
++return defs}
++
++export function checkAchievements(s,...args){return observe(s,'checkAchievements',()=>raw_checkAchievements(s,...args),args)}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/collapse.js b/Auroral Commonwealth Stable v6/worldline/generated/game/collapse.js
+new file mode 100644
+index 0000000..7bcfbe4
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/collapse.js	
+@@ -0,0 +1,5 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++import {observe} from '../../core.js';
++function raw_updateCollapse(s){let score=0;if(s.debt/s.gdp>1.7)score++;if(s.inflation>15)score++;if(s.unemployment>18)score++;if(s.approval<25)score++;if(s.stability<30)score++;if(s.energy.production/s.energy.consumption<.75)score++;const prev=s.collapseStage;s.collapseStage=score>=5?'Collapse':score>=4?'Emergency':score>=3?'Crisis':score>=2?'Warning':'Stable';if(prev!==s.collapseStage)s.notifications.unshift({type:s.collapseStage==='Stable'?'information':'crisis',text:`National condition: ${s.collapseStage}`});return s.collapseStage}
++
++export function updateCollapse(s,...args){return observe(s,'updateCollapse',()=>raw_updateCollapse(s,...args),args)}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/commonwealth.js b/Auroral Commonwealth Stable v6/worldline/generated/game/commonwealth.js
+new file mode 100644
+index 0000000..996efb6
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/commonwealth.js	
+@@ -0,0 +1,14 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++import {observe} from '../../core.js';
++function raw_fundDevelopmentProgram(s){const cost=180;if(s.treasury<cost)return false;s.treasury-=cost;s.commonwealth.projects++;s.infra=Math.min(100,s.infra+.8);s.approval=Math.min(100,s.approval+.8);s.diplomacy.reputation=Math.min(100,s.diplomacy.reputation+1);return true}
++function raw_developmentBankLoan(s){const amount=300;const ceiling=s.gdp*(s.difficulty==='nightmare'?1.35:s.difficulty==='hard'?1.75:2.4);if(s.debt+amount>ceiling)return false;s.debt+=amount*1.02;s.treasury+=amount;s.commonwealth.projects++;return true}
++function raw_researchPartnership(s){const cost=120;if(s.treasury<cost)return false;s.treasury-=cost;s.commonwealth.projects++;s.research.points+=25;s.research.researchers+=.15;s.techLevel=Math.min(100,s.techLevel+.4);s.diplomacy.reputation=Math.min(100,s.diplomacy.reputation+2);return true}
++function raw_humanitarianAid(s){const cost=100;if(s.treasury<cost)return false;s.treasury-=cost;s.diplomacy.aid+=cost;s.diplomacy.reputation=Math.min(100,s.diplomacy.reputation+3);s.approval=Math.max(0,s.approval-.2);return true}
++
++export function fundDevelopmentProgram(s,...args){return observe(s,'fundDevelopmentProgram',()=>raw_fundDevelopmentProgram(s,...args),args)}
++
++export function developmentBankLoan(s,...args){return observe(s,'developmentBankLoan',()=>raw_developmentBankLoan(s,...args),args)}
++
++export function researchPartnership(s,...args){return observe(s,'researchPartnership',()=>raw_researchPartnership(s,...args),args)}
++
++export function humanitarianAid(s,...args){return observe(s,'humanitarianAid',()=>raw_humanitarianAid(s,...args),args)}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/diplomacy.js b/Auroral Commonwealth Stable v6/worldline/generated/game/diplomacy.js
+new file mode 100644
+index 0000000..776eacc
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/diplomacy.js	
+@@ -0,0 +1,10 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++import {observe} from '../../core.js';
++import {stateRandom} from '../../core.js';
++export function relationLabel(v){return v<-50?'Hostile':v<-15?'Poor':v<20?'Neutral':v<60?'Friendly':'Allied'}
++function raw_negotiate(s,countryId){const cur=s.diplomacy.relations[countryId]||0;const cost=35;if(s.treasury<cost)return false;s.treasury-=cost;s.diplomacy.relations[countryId]=Math.min(100,cur+8+stateRandom(s)*8);s.diplomacy.reputation=Math.min(100,s.diplomacy.reputation+1);return true}
++function raw_sanction(s,countryId){const cur=s.diplomacy.relations[countryId]||0;s.diplomacy.relations[countryId]=Math.max(-100,cur-35);s.diplomacy.sanctions++;s.trade.exports*=.992;s.diplomacy.reputation=Math.max(0,s.diplomacy.reputation-2)}
++
++export function negotiate(s,...args){return observe(s,'negotiate',()=>raw_negotiate(s,...args),args)}
++
++export function sanction(s,...args){return observe(s,'sanction',()=>raw_sanction(s,...args),args)}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/economy.js b/Auroral Commonwealth Stable v6/worldline/generated/game/economy.js
+new file mode 100644
+index 0000000..e144e3a
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/economy.js	
+@@ -0,0 +1,42 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++import {observe} from '../../core.js';
++import {stateRandom} from '../../core.js';
++const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
++function raw_computeMonthlyEconomy(s){
++ const avgTax=(s.taxes.income*.42+s.taxes.corporate*.28+s.taxes.sales*.22+s.taxes.resource*.08)/100;
++ const taxDrag=Math.max(0,avgTax-.18)*.10;
++ const infraBoost=(s.infra-60)/1000, techBoost=(s.techLevel-60)/1200, eduBoost=(s.education-60)/1400;
++ const energyRatio=s.energy.production/Math.max(1,s.energy.consumption); const energyPenalty=energyRatio<1?(1-energyRatio)*.10:0;
++ const tradeBoost=((s.trade.exports-s.trade.imports)/Math.max(1,s.gdp))*.035;
++ const industryBoost=(s.industryIndex-100)/2400;
++ const confidence=(s.consumerConfidence-60)/5000;
++ const shock=(stateRandom(s)-.5)*.006;
++ let annualGrowth=.018+infraBoost+techBoost+eduBoost+tradeBoost+industryBoost+confidence-taxDrag-energyPenalty-shock;
++ annualGrowth=clamp(annualGrowth,-.12,.14);
++ const monthlyGrowth=Math.pow(1+annualGrowth,1/12)-1;
++ const oldGdp=s.gdp;s.gdp*=1+monthlyGrowth;
++ const annualRevenue=s.gdp*(.19+avgTax*.62)+s.trade.imports*(s.taxes.tariff/100)*.08;
++ const revenue=annualRevenue/12;
++ const spendShare=Object.values(s.budget).reduce((a,b)=>a+b,0)/100;
++ const programSpend=s.gdp*spendShare/12;
++ const interestRate=.025+Math.max(0,s.debt/s.gdp-1)*.012+Math.max(0,s.inflation-5)*.0015;
++ const interest=s.debt*interestRate/12;
++ const maintenance=Object.values(s.buildings).reduce((a,b)=>a+b,0)*.9;
++ const importsCost=s.trade.imports*.0015;
++ const expenses=programSpend+interest+maintenance+importsCost;
++ const balance=revenue-expenses;s.treasury+=balance;
++ if(s.treasury<0){s.debt+=Math.abs(s.treasury);s.treasury=0}
++ // inflation and labor
++ const deficitPressure=Math.max(0,-balance)/Math.max(1,s.gdp)*18;
++ const supplyPressure=Math.max(0,1-energyRatio)*3;
++ const spendingPressure=Math.max(0,spendShare-.26)*5;
++ s.inflation=clamp(s.inflation*.90+1.7*.10+deficitPressure+supplyPressure+spendingPressure-(s.trade.imports/s.gdp)*.08,.2,60);
++ s.unemployment=clamp(s.unemployment-monthlyGrowth*18+(s.techLevel>90?.03:0)-(s.budget.education-4)*.012+(stateRandom(s)-.5)*.12,1,35);
++ s.population*=1+clamp((.007-s.unemployment*.00025+s.healthcare*.00002)/12,-.003,.002);
++ s.consumerConfidence=clamp(s.consumerConfidence+monthlyGrowth*60-(s.inflation-3)*.05+(s.approval-50)*.002,15,95);
++ s.lastMonthly={revenue,expenses,balance,growth:(s.gdp/oldGdp-1)*100,interest};
++ s.trade.balance=s.trade.exports-s.trade.imports;
++ return s.lastMonthly;
++}
++
++export function computeMonthlyEconomy(s,...args){return observe(s,'computeMonthlyEconomy',()=>raw_computeMonthlyEconomy(s,...args),args)}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/events.js b/Auroral Commonwealth Stable v6/worldline/generated/game/events.js
+new file mode 100644
+index 0000000..a227dc3
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/events.js	
+@@ -0,0 +1,15 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++import {observe} from '../../core.js';
++import {stateRandom} from '../../core.js';
++import {EVENT_DEFS} from '../data/events.js';
++function raw_maybeEvent(s){
++ if(s.pendingEvent){if(getPending(s))return null;s.pendingEvent=null}
++ for(const e of EVENT_DEFS){if(stateRandom(s)<e.p/12){s.pendingEvent={id:e.id};return e}}
++ return null;
++}
++export function getPending(s){return EVENT_DEFS.find(e=>e.id===s.pendingEvent?.id)||null}
++function raw_resolveEvent(s,choiceIndex){const e=getPending(s);if(!e){s.pendingEvent=null;return false}const c=e.choices[choiceIndex];if(!c)return false;if(c.cost>s.treasury)return false;s.treasury-=c.cost;c.effect(s);s.notifications.unshift({type:'information',text:`Resolved: ${e.title} — ${c.label}`});s.pendingEvent=null;return true}
++
++export function maybeEvent(s,...args){return observe(s,'maybeEvent',()=>raw_maybeEvent(s,...args),args)}
++
++export function resolveEvent(s,...args){return observe(s,'resolveEvent',()=>raw_resolveEvent(s,...args),args)}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/gameTime.js b/Auroral Commonwealth Stable v6/worldline/generated/game/gameTime.js
+new file mode 100644
+index 0000000..e41edcb
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/gameTime.js	
+@@ -0,0 +1,2 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++export class GameClock{constructor(step){this.step=step;this.speed=0;this.acc=0;this.last=performance.now();this.raf=requestAnimationFrame(this.loop.bind(this))}setSpeed(v){this.speed=v}loop(now){const dt=now-this.last;this.last=now;if(this.speed>0){this.acc+=dt*this.speed;if(this.acc>=2600){this.acc=0;this.step()}}this.raf=requestAnimationFrame(this.loop.bind(this))}destroy(){cancelAnimationFrame(this.raf)}}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/government.js b/Auroral Commonwealth Stable v6/worldline/generated/game/government.js
+new file mode 100644
+index 0000000..56bd986
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/government.js	
+@@ -0,0 +1,63 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++import {observe} from '../../core.js';
++const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
++const hasOwn=(obj,key)=>!!obj&&Object.prototype.hasOwnProperty.call(obj,key);
++
++function raw_setPolicyValue(s,group,key,value){
++ const val=Number(value);
++ if(!Number.isFinite(val))return false;
++ if(group==='tax'){
++  if(!hasOwn(s?.taxes,key))return false;
++  const max=key==='tariff'?40:60;
++  s.taxes[key]=Math.round(clamp(val,0,max)*10)/10;
++  return true;
++ }
++ if(group==='budget'){
++  if(!hasOwn(s?.budget,key))return false;
++  s.budget[key]=Math.round(clamp(val,.5,12)*10)/10;
++  return true;
++ }
++ return false;
++}
++
++export function getPolicyValue(s,group,key){
++ const target=group==='tax'?s?.taxes:group==='budget'?s?.budget:null;
++ const value=target?.[key];
++ return Number.isFinite(value)?value:null;
++}
++
++function raw_applyGovernmentEffects(s){
++ s.education=clamp(s.education+(s.budget.education-4)*.035,20,100);
++ s.healthcare=clamp(s.healthcare+(s.budget.healthcare-4.5)*.03,20,100);
++ s.infra=clamp(s.infra+(s.budget.infrastructure-3.5)*.018,20,100);
++ s.techLevel=clamp(s.techLevel+(s.budget.science-2)*.014,10,100);
++ s.military=clamp(s.military+(s.budget.defense-2.5)*.012,10,100);
++ const taxBurden=(s.taxes.income+s.taxes.sales+s.taxes.corporate*.6)/100;
++ s.approval=clamp(s.approval+(s.budget.welfare-3.5)*.02+(s.healthcare-70)*.003-(taxBurden-.35)*.18-(s.inflation-3)*.05-(s.unemployment-5)*.04,0,100);
++ s.stability=clamp(s.stability+(s.approval-50)*.006-(s.inflation>12?.16:0),0,100);
++ s.legitimacy=clamp(s.legitimacy+(s.stability-50)*.004,0,100);
++}
++
++function raw_borrow(s,amount){
++ amount=Number(amount);
++ if(!Number.isFinite(amount)||amount<=0)return false;
++ const ceiling=s.gdp*(s.difficulty==='nightmare'?1.4:s.difficulty==='hard'?1.8:2.5);
++ if(s.debt+amount>ceiling)return false;
++ s.debt+=amount;s.treasury+=amount;return true;
++}
++
++function raw_repayDebt(s,amount){
++ amount=Number(amount);
++ if(!Number.isFinite(amount)||amount<=0)return 0;
++ amount=Math.min(amount,Math.max(0,s.treasury),Math.max(0,s.debt));
++ if(amount<=0)return 0;
++ s.treasury-=amount;s.debt-=amount;return amount;
++}
++
++export function setPolicyValue(s,...args){return observe(s,'setPolicyValue',()=>raw_setPolicyValue(s,...args),args)}
++
++export function applyGovernmentEffects(s,...args){return observe(s,'applyGovernmentEffects',()=>raw_applyGovernmentEffects(s,...args),args)}
++
++export function borrow(s,...args){return observe(s,'borrow',()=>raw_borrow(s,...args),args)}
++
++export function repayDebt(s,...args){return observe(s,'repayDebt',()=>raw_repayDebt(s,...args),args)}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/industries.js b/Auroral Commonwealth Stable v6/worldline/generated/game/industries.js
+new file mode 100644
+index 0000000..8288e60
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/industries.js	
+@@ -0,0 +1,13 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++import {observe} from '../../core.js';
++import {stateRandom} from '../../core.js';
++function raw_investIndustry(s,key,amount=200){
++ amount=Number(amount);const x=s.industries?.[key];
++ if(!x||!Number.isFinite(amount)||amount<=0||s.treasury<amount)return false;
++ s.treasury-=amount;x.investment+=amount;x.level+=amount/180;x.revenue*=1+amount/10000;s.industryIndex+=amount/2200;return true;
++}
++function raw_updateIndustries(s){for(const x of Object.values(s.industries)){const margin=(x.revenue-x.cost)/Math.max(1,x.revenue);x.level=Math.max(1,x.level*(1+margin*.002+(stateRandom(s)-.5)*.003));x.workers=Math.max(.05,x.workers*(1+(s.gdp>0?.001:0)-s.unemployment*.00008));x.revenue*=1+(s.productivity-1)*.003+(s.techLevel-70)*.00005;x.cost*=1+s.inflation/1200} s.industryIndex=Object.values(s.industries).reduce((a,x)=>a+x.level,0)/1.05}
++
++export function investIndustry(s,...args){return observe(s,'investIndustry',()=>raw_investIndustry(s,...args),args)}
++
++export function updateIndustries(s,...args){return observe(s,'updateIndustries',()=>raw_updateIndustries(s,...args),args)}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/infrastructure.js b/Auroral Commonwealth Stable v6/worldline/generated/game/infrastructure.js
+new file mode 100644
+index 0000000..3efce5c
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/infrastructure.js	
+@@ -0,0 +1,6 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++import {observe} from '../../core.js';
++export const BUILDINGS={roads:{name:'Road Network',cost:180,maintenance:1.5,infra:.7},railways:{name:'Rail Corridor',cost:420,maintenance:3,infra:1.1},airports:{name:'International Airport',cost:900,maintenance:7,infra:1.5},ports:{name:'Deepwater Port',cost:780,maintenance:6,infra:1.4},powerPlants:{name:'Power Plant',cost:620,maintenance:5,energy:14},hospitals:{name:'Regional Hospital',cost:260,maintenance:3,healthcare:1.1},schools:{name:'School Network',cost:180,maintenance:2,education:.8},universities:{name:'University',cost:480,maintenance:4,education:1.4,researchers:.25},factories:{name:'Industrial Park',cost:520,maintenance:5,industry:2.2},dataCenters:{name:'Data Center',cost:680,maintenance:6,tech:1.0},researchCenters:{name:'Research Center',cost:740,maintenance:6,tech:1.4,researchers:.6}};
++function raw_build(s,key){const b=BUILDINGS[key];if(!b||s.treasury<b.cost)return false;s.treasury-=b.cost;s.buildings[key]=(s.buildings[key]||0)+1;s.infra=Math.min(100,s.infra+(b.infra||0));s.energy.capacity+=(b.energy||0);s.healthcare=Math.min(100,s.healthcare+(b.healthcare||0));s.education=Math.min(100,s.education+(b.education||0));s.industryIndex+=b.industry||0;s.techLevel=Math.min(100,s.techLevel+(b.tech||0));s.research.researchers+=b.researchers||0;return true}
++
++export function build(s,...args){return observe(s,'build',()=>raw_build(s,...args),args)}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/resources.js b/Auroral Commonwealth Stable v6/worldline/generated/game/resources.js
+new file mode 100644
+index 0000000..0197617
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/resources.js	
+@@ -0,0 +1,26 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++import {observe} from '../../core.js';
++import {stateRandom} from '../../core.js';
++const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
++function raw_updateResources(s){
++ for(const r of Object.values(s.resources)){
++  const scarcity=clamp(r.consumption/Math.max(.1,r.production)-1,-.5,4);
++  const reservePressure=r.reserve<r.consumption*60?.15:0;
++  r.price=clamp(r.price*(1+(stateRandom(s)-.5)*.035+scarcity*.01+reservePressure*.01),5,1000);
++  const produced=Math.min(r.reserve,r.production);
++  r.reserve=Math.max(0,r.reserve-produced);
++  const existingStock=Number.isFinite(r.stock)?r.stock:r.consumption*3;
++  r.stock=existingStock+produced-r.consumption;
++  if(r.stock<0){r.stock=0;s.inflation+=.06;s.industryIndex-=.12}
++ }
++}
++function raw_updateEnergy(s){
++ const mixEff=(s.energy.mix.solar+s.energy.mix.wind+s.energy.mix.hydro)*.001+(s.techLevel/100)*.05;
++ s.energy.production=Math.max(0,s.energy.capacity*(.86+mixEff)+s.energy.imported);
++ s.energy.consumption=Math.max(20,s.gdp/300+s.population*.06+s.industryIndex*.22);
++ if(s.energy.production<s.energy.consumption){s.industryIndex=Math.max(40,s.industryIndex-(s.energy.consumption-s.energy.production)*.018)}else{s.industryIndex=Math.min(170,s.industryIndex+.08)}
++}
++
++export function updateResources(s,...args){return observe(s,'updateResources',()=>raw_updateResources(s,...args),args)}
++
++export function updateEnergy(s,...args){return observe(s,'updateEnergy',()=>raw_updateEnergy(s,...args),args)}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/saveSystem.js b/Auroral Commonwealth Stable v6/worldline/generated/game/saveSystem.js
+new file mode 100644
+index 0000000..1d41ff2
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/saveSystem.js	
+@@ -0,0 +1,8 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++const KEY='auroral-commonwealth-saves-v1';
++function writeSaves(all){try{localStorage.setItem(KEY,JSON.stringify(all));return true}catch{return false}}
++export function listSaves(){try{const value=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(value)?value:[]}catch{return []}}
++export function saveGame(state,name='Autosave'){const all=listSaves();const slot={id:globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`,name:String(name||'Autosave'),updated:Date.now(),state:structuredClone(state)};all.unshift(slot);slot.persisted=writeSaves(all.slice(0,12));return slot}
++export function updateSave(id,state){const all=listSaves();const x=all.find(s=>s.id===id);if(!x)return saveGame(state);x.state=structuredClone(state);x.updated=Date.now();x.persisted=writeSaves(all);return x}
++export function deleteSave(id){return writeSaves(listSaves().filter(s=>s.id!==id))}
++export function renameSave(id,name){const all=listSaves();const x=all.find(s=>s.id===id);if(x)x.name=String(name||x.name);return writeSaves(all)}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/state.js b/Auroral Commonwealth Stable v6/worldline/generated/game/state.js
+new file mode 100644
+index 0000000..d672a37
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/state.js	
+@@ -0,0 +1,86 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++import {RESOURCE_DEFS} from '../../../data/resources.js';
++
++const baseBudget={education:4.0,healthcare:4.5,infrastructure:3.5,defense:2.5,science:2.0,energy:1.7,transport:1.7,welfare:3.5,administration:1.5,environment:1.0};
++const baseTaxes={income:18,corporate:22,sales:9,tariff:4,resource:8};
++const sectors={agriculture:10,mining:7,manufacturing:16,electronics:9,automobile:8,aerospace:4,energy:8,construction:8,software:10,tourism:7,banking:8,healthcare:5,entertainment:5};
++const baseBuildings={roads:1,railways:1,airports:1,ports:1,powerPlants:1,hospitals:1,schools:1,universities:1,factories:1,dataCenters:0,researchCenters:0};
++const baseSettings={sound:false,music:false,animations:true,notifications:true,theme:'system',density:'comfortable',highContrast:false,autosaveInterval:3};
++const baseMix={coal:23,gas:20,nuclear:15,solar:16,wind:14,hydro:12};
++const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
++const finite=(v,fallback)=>Number.isFinite(Number(v))?Number(v):fallback;
++const finitePositive=(v,fallback)=>{const n=finite(v,fallback);return n>0?n:fallback};
++
++export function createState(country,difficulty='normal',custom={}){
++ const mult={easy:1.35,normal:1,hard:.8,nightmare:.62}[difficulty]||1;
++ const resources={};
++ for(const k of Object.keys(RESOURCE_DEFS)){
++  resources[k]=structuredClone(country.resources?.[k]||{reserve:1000,production:2,consumption:2});
++  resources[k].price=RESOURCE_DEFS[k].basePrice;
++ }
++ const population=finitePositive(custom.population,country.population);
++ const treasury=Number.isFinite(Number(custom.treasury))&&Number(custom.treasury)>=0?Number(custom.treasury):country.treasury;
++ const tech=finite(custom.tech,country.tech),infra=finite(custom.infra,country.infra);
++ const s={version:1,difficulty,countryId:country.id,name:custom.name||country.name,flag:custom.flag||country.flag||'🏳️',capital:custom.capital||country.capital||'Capital City',currency:custom.currency||country.currency||'AR',governmentType:custom.governmentType||'Constitutional Republic',geography:custom.geography||'Mixed',nationalColor:custom.nationalColor||'#72d7ff',date:{year:2035,month:0},speed:0,
++  population,gdp:finitePositive(country.gdp,population*20),treasury:treasury*mult,debt:Math.max(0,finite(country.debt,0)),inflation:finite(country.inflation,3),unemployment:finite(country.unemployment,6),approval:finite(country.approval,55),stability:finite(country.stability,70),legitimacy:75,
++  techLevel:tech,infra,military:finite(country.military,55),education:72,healthcare:74,productivity:1,industryIndex:100,consumerConfidence:70,moneySupply:100,
++  taxes:{...baseTaxes,income:Number.isFinite(+custom.taxRate)?clamp(+custom.taxRate,0,60):baseTaxes.income},budget:{...baseBudget},trade:{exports:country.gdp*.12,imports:country.gdp*.11,agreements:1,balance:0,tariffRevenue:0},energy:{capacity:Math.max(60,(country.gdp/300+population*.06+22)/.94*1.06),production:Math.max(58,(country.gdp/300+population*.06+22)*1.06),consumption:country.gdp/300+population*.06+22,imported:0,mix:{...baseMix}},
++  resources,industries:Object.fromEntries(Object.entries(sectors).map(([k,v])=>[k,{level:v,workers:Math.max(.1,population*v/800),revenue:country.gdp*v/100,cost:country.gdp*v/145,investment:0}])),
++  research:{points:0,active:null,completed:[],researchers:Math.max(.1,population*.006)},diplomacy:{reputation:50,relations:{},sanctions:0,aid:0},commonwealth:{member:true,contribution:country.gdp*.0012,rank:0,votes:1,projects:0},
++  buildings:{...baseBuildings},notifications:[],achievements:[],history:[],collapseStage:'Stable',autosave:true,settings:{...baseSettings},lastMonthly:{revenue:0,expenses:0,balance:0,growth:0,interest:0}};
++ snapshot(s);return s;
++}
++
++// Repairs malformed/older local saves without changing valid current values.
++export function repairState(s){
++ if(!s||typeof s!=='object')return null;
++ s.version=finite(s.version,1);
++ s.difficulty=['easy','normal','hard','nightmare'].includes(s.difficulty)?s.difficulty:'normal';
++ s.name=String(s.name||'Unnamed Nation');s.flag=String(s.flag||'🏳️');s.capital=String(s.capital||'Capital City');s.currency=String(s.currency||'AR');
++ s.governmentType=String(s.governmentType||'Constitutional Republic');s.geography=String(s.geography||'Mixed');s.nationalColor=String(s.nationalColor||'#72d7ff');
++ const year=Math.trunc(finite(s.date?.year,2035));const month=clamp(Math.trunc(finite(s.date?.month,0)),0,11);s.date={year,month};
++ s.speed=[0,1,2,5,10].includes(Number(s.speed))?Number(s.speed):0;
++ s.population=finitePositive(s.population,50);s.gdp=finitePositive(s.gdp,s.population*20);s.treasury=Math.max(0,finite(s.treasury,0));s.debt=Math.max(0,finite(s.debt,0));
++ s.inflation=clamp(finite(s.inflation,3),.2,60);s.unemployment=clamp(finite(s.unemployment,6),1,35);s.approval=clamp(finite(s.approval,55),0,100);s.stability=clamp(finite(s.stability,70),0,100);s.legitimacy=clamp(finite(s.legitimacy,75),0,100);
++ s.techLevel=clamp(finite(s.techLevel,70),10,100);s.infra=clamp(finite(s.infra,65),20,100);s.military=clamp(finite(s.military,55),10,100);s.education=clamp(finite(s.education,72),20,100);s.healthcare=clamp(finite(s.healthcare,74),20,100);
++ s.productivity=finitePositive(s.productivity,1);s.industryIndex=finitePositive(s.industryIndex,100);s.consumerConfidence=clamp(finite(s.consumerConfidence,70),15,95);s.moneySupply=finitePositive(s.moneySupply,100);
++ s.taxes={...baseTaxes,...(s.taxes&&typeof s.taxes==='object'?s.taxes:{})};
++ for(const k of Object.keys(baseTaxes)){const max=k==='tariff'?40:60;s.taxes[k]=clamp(finite(s.taxes[k],baseTaxes[k]),0,max)}
++ s.budget={...baseBudget,...(s.budget&&typeof s.budget==='object'?s.budget:{})};
++ for(const k of Object.keys(baseBudget))s.budget[k]=clamp(finite(s.budget[k],baseBudget[k]),.5,12);
++ s.trade={exports:s.gdp*.12,imports:s.gdp*.11,agreements:1,balance:0,tariffRevenue:0,...(s.trade&&typeof s.trade==='object'?s.trade:{})};
++ for(const k of ['exports','imports','balance','tariffRevenue'])s.trade[k]=finite(s.trade[k],0);s.trade.agreements=Math.max(0,Math.trunc(finite(s.trade.agreements,1)));
++ const defaultConsumption=s.gdp/300+s.population*.06+22;
++ s.energy={capacity:Math.max(60,defaultConsumption*1.12),production:Math.max(58,defaultConsumption*1.06),consumption:defaultConsumption,imported:0,mix:{...baseMix},...(s.energy&&typeof s.energy==='object'?s.energy:{})};
++ s.energy.mix={...baseMix,...(s.energy.mix&&typeof s.energy.mix==='object'?s.energy.mix:{})};
++ for(const k of ['capacity','production','consumption','imported'])s.energy[k]=Math.max(0,finite(s.energy[k],k==='consumption'?defaultConsumption:0));
++ for(const k of Object.keys(baseMix))s.energy.mix[k]=Math.max(0,finite(s.energy.mix[k],baseMix[k]));
++ const repairedResources={};
++ for(const [k,d] of Object.entries(RESOURCE_DEFS)){
++  const r=s.resources?.[k]||{};
++  repairedResources[k]={...r,reserve:Math.max(0,finite(r.reserve,1000)),production:Math.max(0,finite(r.production,2)),consumption:Math.max(0,finite(r.consumption,2)),price:Math.max(0,finite(r.price,d.basePrice))};
++  if(r.stock!==undefined)repairedResources[k].stock=Math.max(0,finite(r.stock,0));
++ }
++ s.resources=repairedResources;
++ const repairedIndustries={};
++ for(const [k,v] of Object.entries(sectors)){
++  const x=s.industries?.[k]||{};
++  repairedIndustries[k]={...x,level:finitePositive(x.level,v),workers:Math.max(.05,finite(x.workers,Math.max(.1,s.population*v/800))),revenue:Math.max(0,finite(x.revenue,s.gdp*v/100)),cost:Math.max(0,finite(x.cost,s.gdp*v/145)),investment:Math.max(0,finite(x.investment,0))};
++ }
++ s.industries=repairedIndustries;
++ s.research={points:0,active:null,completed:[],researchers:Math.max(.1,s.population*.006),...(s.research&&typeof s.research==='object'?s.research:{})};
++ s.research.points=Math.max(0,finite(s.research.points,0));s.research.researchers=Math.max(0,finite(s.research.researchers,.1));s.research.completed=Array.isArray(s.research.completed)?s.research.completed:[];
++ if(s.research.active&&typeof s.research.active==='object'){s.research.active.progress=clamp(finite(s.research.active.progress,0),0,100);s.research.active.paid=Math.max(0,finite(s.research.active.paid,0))}else s.research.active=null;
++ s.diplomacy={reputation:50,relations:{},sanctions:0,aid:0,...(s.diplomacy&&typeof s.diplomacy==='object'?s.diplomacy:{})};s.diplomacy.relations=s.diplomacy.relations&&typeof s.diplomacy.relations==='object'?s.diplomacy.relations:{};for(const [id,value] of Object.entries(s.diplomacy.relations))s.diplomacy.relations[id]=clamp(finite(value,0),-100,100);s.diplomacy.reputation=clamp(finite(s.diplomacy.reputation,50),0,100);s.diplomacy.sanctions=Math.max(0,finite(s.diplomacy.sanctions,0));s.diplomacy.aid=Math.max(0,finite(s.diplomacy.aid,0));
++ s.commonwealth={member:true,contribution:s.gdp*.0012,rank:0,votes:1,projects:0,...(s.commonwealth&&typeof s.commonwealth==='object'?s.commonwealth:{})};
++ for(const k of ['contribution','rank','votes','projects'])s.commonwealth[k]=Math.max(0,finite(s.commonwealth[k],0));
++ s.buildings={...baseBuildings,...(s.buildings&&typeof s.buildings==='object'?s.buildings:{})};for(const k of Object.keys(baseBuildings))s.buildings[k]=Math.max(0,Math.trunc(finite(s.buildings[k],baseBuildings[k])));
++ s.notifications=Array.isArray(s.notifications)?s.notifications:[];s.achievements=Array.isArray(s.achievements)?s.achievements:[];s.history=Array.isArray(s.history)?s.history:[];
++ s.collapseStage=['Stable','Warning','Crisis','Emergency','Collapse'].includes(s.collapseStage)?s.collapseStage:'Stable';s.autosave=s.autosave!==false;
++ s.settings={...baseSettings,...(s.settings&&typeof s.settings==='object'?s.settings:{})};
++ s.lastMonthly={revenue:0,expenses:0,balance:0,growth:0,interest:0,...(s.lastMonthly&&typeof s.lastMonthly==='object'?s.lastMonthly:{})};for(const k of ['revenue','expenses','balance','growth','interest'])s.lastMonthly[k]=finite(s.lastMonthly[k],0);
++ return s;
++}
++
++export function snapshot(s){if(!Array.isArray(s.history))s.history=[];s.history.push({year:s.date.year,month:s.date.month,gdp:s.gdp,inflation:s.inflation,population:s.population,debt:s.debt,unemployment:s.unemployment,exports:s.trade.exports,imports:s.trade.imports,energy:s.energy.production,industry:s.industryIndex,revenue:s.lastMonthly.revenue,expenses:s.lastMonthly.expenses});if(s.history.length>180)s.history.shift()}
++export function advanceDate(s){s.date.month++;if(s.date.month>11){s.date.month=0;s.date.year++}}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/technology.js b/Auroral Commonwealth Stable v6/worldline/generated/game/technology.js
+new file mode 100644
+index 0000000..1b186ca
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/technology.js	
+@@ -0,0 +1,16 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++import {observe} from '../../core.js';
++import {TECHNOLOGIES} from '../../../data/technologies.js';
++function raw_startResearch(s,id){const t=TECHNOLOGIES.find(x=>x.id===id);if(!t||s.research.active||s.research.completed.includes(id)||s.treasury<t.cost*.2)return false;s.treasury-=t.cost*.2;s.research.active={id,progress:0,paid:t.cost*.2};return true}
++function raw_updateResearch(s){
++ if(!s.research.active)return;
++ const t=TECHNOLOGIES.find(x=>x.id===s.research.active.id);
++ if(!t){s.research.active=null;return}
++ const monthlyCost=t.cost*.8/t.months;if(s.treasury<monthlyCost)return;
++ s.treasury-=monthlyCost;s.research.active.paid+=monthlyCost;s.research.active.progress+=100/t.months*(.75+s.budget.science/8+s.research.researchers/20);
++ if(s.research.active.progress>=100){if(!s.research.completed.includes(t.id))s.research.completed.push(t.id);s.research.active=null;s.productivity*=t.boost;s.techLevel=Math.min(100,s.techLevel+2);s.notifications.unshift({type:'achievement',text:`Research completed: ${t.name}`})}
++}
++
++export function startResearch(s,...args){return observe(s,'startResearch',()=>raw_startResearch(s,...args),args)}
++
++export function updateResearch(s,...args){return observe(s,'updateResearch',()=>raw_updateResearch(s,...args),args)}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/game/trade.js b/Auroral Commonwealth Stable v6/worldline/generated/game/trade.js
+new file mode 100644
+index 0000000..fc77076
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/game/trade.js	
+@@ -0,0 +1,36 @@
++// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
++import {observe} from '../../core.js';
++import {stateRandom} from '../../core.js';
++const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
++function raw_updateTrade(s){
++ const competitiveness=(s.techLevel*.35+s.infra*.28+s.education*.18+s.industryIndex*.19)/100;
++ const tariffDrag=Math.max(0,s.taxes.tariff-6)*.006;
++ s.trade.exports=Math.max(20,s.trade.exports*(1+(.005+competitiveness*.004+stateRandom(s)*.008-tariffDrag)/12));
++ s.trade.imports=Math.max(20,s.trade.imports*(1+(.018+s.gdp/100000+stateRandom(s)*.01+s.taxes.tariff*-.0003)/12));
++ s.trade.balance=s.trade.exports-s.trade.imports;
++}
++function raw_signTradeAgreement(s){const cost=60;if(s.treasury<cost)return false;s.treasury-=cost;s.trade.agreements++;s.trade.exports*=1.025;s.diplomacy.reputation=Math.min(100,s.diplomacy.reputation+2);return true}
++function raw_buyResource(s,key,units){
++ const r=s.resources?.[key];units=Number(units);
++ if(!r||!Number.isFinite(units)||units<=0||!Number.isFinite(r.price))return false;
++ const cost=units*r.price/100;
++ if(!Number.isFinite(cost)||cost<0||s.treasury<cost)return false;
++ s.treasury-=cost;r.stock=(Number.isFinite(r.stock)?r.stock:0)+units;s.trade.imports+=cost*3;return true;
++}
++function raw_exportResource(s,key,units){
++ const r=s.resources?.[key];units=Number(units);
++ if(!r||!Number.isFinite(units)||units<=0||!Number.isFinite(r.price))return false;
++ const stock=Number.isFinite(r.stock)?r.stock:0;
++ if(stock<units)return false;
++ const revenue=units*r.price/115;
++ if(!Number.isFinite(revenue)||revenue<0)return false;
++ r.stock=stock-units;s.treasury+=revenue;s.trade.exports+=revenue*3;return true;
++}
++
++export function updateTrade(s,...args){return observe(s,'updateTrade',()=>raw_updateTrade(s,...args),args)}
++
++export function signTradeAgreement(s,...args){return observe(s,'signTradeAgreement',()=>raw_signTradeAgreement(s,...args),args)}
++
++export function buyResource(s,...args){return observe(s,'buyResource',()=>raw_buyResource(s,...args),args)}
++
++export function exportResource(s,...args){return observe(s,'exportResource',()=>raw_exportResource(s,...args),args)}
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/manifest.json b/Auroral Commonwealth Stable v6/worldline/generated/manifest.json
+new file mode 100644
+index 0000000..3471cde
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/manifest.json	
+@@ -0,0 +1,28 @@
++{
++  "overlay": "1.0.0",
++  "engine": "6.1.0",
++  "digest": "47879fb7f22200d689c972bc87ff1edaa463d307a872ccc14dba2978261bfc50",
++  "hashes": {
++    "data/events.js": "20ffb66486c2750c893d7be0bb9a144cc272d8d55e8695dcd6e8d265a651629e",
++    "game/achievements.js": "3d200f245cd0ecca4b04f752776d0dc5dd92fafe9c6f40f402e50dff8e3807a5",
++    "game/collapse.js": "8cdfdf04df998f173acb549935848a8ff3fd539562458de46fe1358ae4710e4c",
++    "game/commonwealth.js": "4ecde433cd1514a5f2567086446426ace5f10db1539b7fff805df68edbd0e214",
++    "game/diplomacy.js": "926bed2dacbf9e14930ce8482912bcc31bf7664faabb16ca2c20d36872a6387b",
++    "game/economy.js": "2710f447be4babe2183c876a2ad73123310431efc888c212559040c22ea657ce",
++    "game/events.js": "4035fcf494fdaa09a7acf537e0a23868bbc7c8d47488a5a4354e1a1b1f932018",
++    "game/gameTime.js": "dc877b03f12ba8c17e608859ffd8c3966cf03f6a87191e5b6a36ffa7d5f8c462",
++    "game/government.js": "b27b42519fac3045fc92bc38456ee8f5eb15fdb63d6ad98b37ed0477770db9ab",
++    "game/industries.js": "117e933bc9058d44b0386bbab3608a0595b756ec76e84bf8da548ea80a09e7b2",
++    "game/infrastructure.js": "395f785a325d2308f10aacba1aef96101959cdbcc1b8c26bf4339901dc84e43b",
++    "game/resources.js": "a3f538a798fb6fc1e1aa0646a74fee2051c1a1437f2bbab70a8d84457f2eb8bc",
++    "game/saveSystem.js": "8d669c01b0fc2bc3908a2bd049eefa0c4a40a9dbaa7dc6d8ecbb89afd7fab8be",
++    "game/state.js": "6f7ff3a565d3ce168d9d837c3c9263b736e42873f879cb0da74ecc346a85e449",
++    "game/technology.js": "43397912da7b87ae5611a3453c3c5a97f813e4ce0a4a5fcf3103508b34185cfc",
++    "game/trade.js": "077ed77560c054266a2f4e2c42999c90994541a0b962b1e148f6858486a5ec4f"
++  },
++  "overlayHashes": {
++    "engine.js": "ebe6165c597c372c1fa31efe294de271b4eaaa7498afd0f1560412db97d7ed9b",
++    "core.js": "390567a3f31028268147bd1b4ac6d581ad8e5925771f9e3409158824ef10e725",
++    "build.mjs": "5760ce3671f98f962de1d0be3655546ad0bc485b147563d125c6b7cfeadb5b48"
++  }
++}
+\ No newline at end of file
+diff --git a/Auroral Commonwealth Stable v6/worldline/generated/version.js b/Auroral Commonwealth Stable v6/worldline/generated/version.js
+new file mode 100644
+index 0000000..9ce83a1
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/generated/version.js	
+@@ -0,0 +1 @@
++export const ENGINE_VERSION="6.1.0+worldline.1.0.0:47879fb7f22200d689c972bc87ff1edaa463d307a872ccc14dba2978261bfc50";
+diff --git a/Auroral Commonwealth Stable v6/worldline/release.json b/Auroral Commonwealth Stable v6/worldline/release.json
+new file mode 100644
+index 0000000..bbcd19a
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/release.json	
+@@ -0,0 +1,10 @@
++{
++  "name": "Auroral Worldline Intelligence Suite",
++  "version": "1.0.0",
++  "baseGameVersion": "6.1.0",
++  "schemaVersion": 1,
++  "engine": "existing Stable v6.1 monthly engine; generated deterministic adapters",
++  "entrypoint": "../index.html",
++  "externalServicesRequired": false,
++  "newRuntimeDependencies": 0
++}
+diff --git a/Auroral Commonwealth Stable v6/worldline/smoke.mjs b/Auroral Commonwealth Stable v6/worldline/smoke.mjs
+new file mode 100644
+index 0000000..b449831
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/smoke.mjs	
+@@ -0,0 +1,37 @@
++import assert from 'node:assert/strict';
++import {spawn} from 'node:child_process';
++import net from 'node:net';
++import crypto from 'node:crypto';
++import fs from 'node:fs';
++import path from 'node:path';
++import {fileURLToPath} from 'node:url';
++const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
++const port=18463,origin=`http://127.0.0.1:${port}`;
++const server=spawn(process.execPath,['server.mjs'],{cwd:root,env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});
++let logs='';server.stdout.on('data',x=>logs+=x);server.stderr.on('data',x=>logs+=x);
++const clients=[];
++class Client{
++ constructor(){this.messages=[];this.waiters=[];this.buffer=Buffer.alloc(0);this.ready=false}
++ static async open(){const c=new Client();clients.push(c);c.socket=net.connect(port,'127.0.0.1');c.socket.on('data',d=>c.receive(d));c.socket.on('error',e=>c.error=e);await new Promise((resolve,reject)=>{c.socket.once('connect',resolve);c.socket.once('error',reject)});const key=crypto.randomBytes(16).toString('base64');c.socket.write(`GET /ws HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: ${key}\r\nSec-WebSocket-Version: 13\r\n\r\n`);const hello=await c.next(m=>m.type==='hello');assert.equal(hello.maxPlayers,20);return c}
++ receive(d){this.buffer=Buffer.concat([this.buffer,d]);if(!this.ready){const end=this.buffer.indexOf('\r\n\r\n');if(end<0)return;assert.match(this.buffer.subarray(0,end).toString(),/101 Switching Protocols/);this.buffer=this.buffer.subarray(end+4);this.ready=true}while(this.buffer.length>=2){let len=this.buffer[1]&127,off=2;if(len===126){if(this.buffer.length<4)return;len=this.buffer.readUInt16BE(2);off=4}else if(len===127){if(this.buffer.length<10)return;len=Number(this.buffer.readBigUInt64BE(2));off=10}if(this.buffer.length<off+len)return;const opcode=this.buffer[0]&15,payload=this.buffer.subarray(off,off+len);this.buffer=this.buffer.subarray(off+len);if(opcode===1){this.messages.push(JSON.parse(payload.toString()));for(const f of [...this.waiters])f()}}}
++ send(obj){const payload=Buffer.from(JSON.stringify(obj)),mask=crypto.randomBytes(4);let head;if(payload.length<126)head=Buffer.from([129,128|payload.length]);else{head=Buffer.alloc(4);head[0]=129;head[1]=254;head.writeUInt16BE(payload.length,2)}const masked=Buffer.from(payload);for(let i=0;i<masked.length;i++)masked[i]^=mask[i%4];this.socket.write(Buffer.concat([head,mask,masked]))}
++ next(predicate){return new Promise((resolve,reject)=>{const timeout=setTimeout(()=>{this.waiters=this.waiters.filter(x=>x!==check);reject(Error('WebSocket response timeout '+logs))},5000);const check=()=>{const i=this.messages.findIndex(predicate);if(i>=0){clearTimeout(timeout);this.waiters=this.waiters.filter(x=>x!==check);resolve(this.messages.splice(i,1)[0])}};this.waiters.push(check);check()})}
++}
++try{
++ await new Promise((resolve,reject)=>{const deadline=setTimeout(()=>reject(Error('Server startup timeout: '+logs)),5000);server.stdout.on('data',()=>{if(logs.includes('For internet multiplayer')){clearTimeout(deadline);resolve()}});server.on('exit',code=>reject(Error('Server exited '+code+': '+logs)))});
++ const health=await (await fetch(origin+'/health')).json();assert.equal(health.ok,true);assert.equal(health.countries,202);assert.equal(health.maxPlayers,20);console.log('PASS server startup and /health (202 countries, 20-player cap)');
++ const queue=['index.html','bootstrap.js','main.js'],seen=new Set();while(queue.length){const file=queue.shift();if(seen.has(file))continue;seen.add(file);const res=await fetch(origin+'/'+file);assert.equal(res.status,200,file);const text=await res.text();if(file.endsWith('.js'))for(const match of text.matchAll(/(?:from\s+|import\s*\(\s*)(['"])(\.[^'"]+)\1/g)){const target=path.posix.normalize(path.posix.join(path.posix.dirname(file),match[2]));queue.push(target)}}assert.ok(seen.has('worldline/ui.js'));assert.ok(seen.has('worldline/generated/game/economy.js'));assert.equal((await fetch(origin+'/worldline/style.css')).status,200);console.log(`PASS HTTP delivery of ${seen.size} application/module assets and extension CSS`);
++ const host=await Client.open();host.send({type:'create_room',name:'Validation Host'});const created=await host.next(x=>x.type==='room_created'),code=created.room.code;
++ for(let i=1;i<20;i++){const c=await Client.open();c.send({type:'join_room',code,name:'Validation '+i});await c.next(x=>x.type==='room_joined')}
++ const excess=await Client.open();excess.send({type:'join_room',code,name:'Over capacity'});assert.match((await excess.next(x=>x.type==='error')).message,/full/);console.log('PASS 20-human-player room; 21st human rejected');
++ for(const c of clients)c.messages=[];
++ host.send({type:'claim_country',countryId:'usa',difficulty:'normal'});const claimed=await host.next(x=>x.type==='room_state'&&x.room.state);assert.equal(claimed.room.state.countryId,'usa');const before=claimed.room.state.taxes.income;
++ // Invalid state mutations before match start cannot bypass authority.
++ host.send({type:'policy',group:'tax',key:'income',value:55});host.send({type:'unclaim_country'});await host.next(x=>x.type==='room_state'&&!x.room.state);assert.ok(Number.isFinite(before));
++ // A second room provides a started match for authoritative policy/action checks.
++ const solo=await Client.open();solo.send({type:'create_room',name:'Authority'});await solo.next(x=>x.type==='room_created');solo.send({type:'claim_country',countryId:'usa'});await solo.next(x=>x.type==='room_state'&&x.room.state);solo.send({type:'start_game'});await solo.next(x=>x.type==='room_state'&&x.room.started);solo.messages=[];
++ solo.send({type:'policy',group:'tax',key:'income',value:44});assert.equal((await solo.next(x=>x.type==='room_state'&&x.room.state.taxes.income===44)).room.state.taxes.income,44);
++ solo.send({type:'action',action:'borrow',amount:-100});assert.equal((await solo.next(x=>x.type==='action_result')).ok,false);
++ solo.send({type:'policy',group:'tax',key:'unknown',value:3});assert.match((await solo.next(x=>x.type==='error')).message,/Invalid policy/);console.log('PASS authoritative policy updates and invalid financial/action rejection');
++ const manifest=JSON.parse(fs.readFileSync(path.join(root,'worldline/generated/manifest.json')));assert.ok(manifest.digest);console.log('AURORAL WORLDLINE server smoke PASS');
++}finally{for(const c of clients)c.socket?.destroy();server.kill('SIGTERM')}
+diff --git a/Auroral Commonwealth Stable v6/worldline/storage.js b/Auroral Commonwealth Stable v6/worldline/storage.js
+new file mode 100644
+index 0000000..fe2f471
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/storage.js	
+@@ -0,0 +1,32 @@
++import {clone,SCHEMA,LIMITS} from './core.js';
++import {validateJSON,validateExperiment,prepareState} from './engine.js';
++export const STORAGE_KEY='auroral-worldline-suite-v1';
++function validDate(d){return d&&Number.isInteger(d.year)&&Number.isInteger(d.month)&&d.month>=0&&d.month<=11}
++export function validateLedger(raw){
++ validateJSON(raw);if(raw?.schema!==SCHEMA||typeof raw.id!=='string'||raw.id.length>256||!['single-player','isolated-worldline','client-visible-multiplayer','imported-record'].includes(raw.scope)||!Number.isInteger(raw.seq)||raw.seq<0||!Array.isArray(raw.events)||!Array.isArray(raw.traces)||!Array.isArray(raw.snapshots)||raw.events.length>LIMITS.events||raw.traces.length>LIMITS.traces||raw.snapshots.length>LIMITS.snapshots)throw Error('Invalid archive ledger');
++ const ids=new Set();for(const e of raw.events){if(typeof e.id!=='string'||ids.has(e.id)||!validDate(e.date)||!Number.isInteger(e.tick)||typeof e.countryId!=='string'||typeof e.category!=='string'||typeof e.description!=='string'||typeof e.source!=='string'||!e.changes||typeof e.changes!=='object'||Array.isArray(e.changes))throw Error('Invalid history entry');ids.add(e.id);for(const c of Object.values(e.changes)){if(!c||typeof c!=='object'||!Object.hasOwn(c,'before')||!Object.hasOwn(c,'after')||Object.values(c).some(v=>v!==null&&!['number','string','boolean'].includes(typeof v)))throw Error('Invalid historical change')}}
++ const traceIds=new Set();for(const t of raw.traces){if(typeof t.id!=='string'||traceIds.has(t.id)||typeof t.eventId!=='string'||typeof t.rule!=='string'||!validDate(t.date)||!t.inputs||typeof t.inputs!=='object'||!t.changes||typeof t.changes!=='object')throw Error('Invalid trace');for(const c of Object.values(t.changes)){if(!c||typeof c!=='object'||!Object.hasOwn(c,'before')||!Object.hasOwn(c,'after')||Object.values(c).some(v=>v!==null&&!['number','string','boolean'].includes(typeof v)))throw Error('Invalid trace change')}traceIds.add(t.id)}
++ for(const s of raw.snapshots){if(typeof s.id!=='string'||typeof s.eventId!=='string'||!validDate(s.date)||!s.state||!Number.isFinite(s.state.gdp))throw Error('Invalid historical snapshot');prepareState(s.state);if(!s.state.energy||!s.state.lastMonthly||!Number.isFinite(s.state.energy.production)||!Number.isFinite(s.state.energy.consumption)||!Number.isFinite(s.state.lastMonthly.growth)||!Object.values(s.state.resources).every(r=>r&&typeof r==='object'&&Number.isFinite(r.reserve)&&Number.isFinite(r.production)&&Number.isFinite(r.consumption)))throw Error('Incomplete historical snapshot')} 
++ return clone(raw);
++}
++export function parseArchive(text){if(text.length>LIMITS.bytes)throw Error('Archive exceeds 4 MB');const raw=JSON.parse(text);if(raw?.kind!=='auroral-archive'||raw.schema!==SCHEMA)throw Error('Unsupported archive format');const b=validateLedger(raw.ledger);b.scope='imported-record';return b}
++export function storeAdapter(storage){
++ let error='';const empty=()=>({schema:SCHEMA,books:[],experiments:[]});
++ return {
++  get error(){return error},
++  load(){try{const text=storage.getItem(STORAGE_KEY);if(!text)return empty();if(text.length>LIMITS.bytes)throw Error('Stored data exceeds size limit');const data=JSON.parse(text);if(data.schema!==SCHEMA||!Array.isArray(data.books)||data.books.length>5||!Array.isArray(data.experiments)||data.experiments.length>LIMITS.experiments)throw Error('Unsupported stored data');return {schema:SCHEMA,books:data.books.map(validateLedger),experiments:data.experiments.map(validateExperiment)}}catch(e){error='Storage could not be read: '+e.message;return empty()}},
++  save(data){try{validateJSON(data);storage.setItem(STORAGE_KEY,JSON.stringify(data));error='';return true}catch(e){error='Storage not saved: '+e.message;return false}},
++  exportArchive:book=>JSON.stringify({schema:SCHEMA,kind:'auroral-archive',ledger:validateLedger(book)})
++ };
++}
++export function csv(book){const quote=x=>'"'+String(x??'').replaceAll('"','""')+'"';return [['ID','Date','Country','Category','Source','Description'],...book.events.map(e=>[e.id,`${e.date.year}-${String(e.date.month+1).padStart(2,'0')}`,e.countryId,e.category,e.source,e.description])].map(row=>row.map(quote).join(',')).join('\r\n')}
++
++// Retain replay inputs and recent history within one bounded extension store.
++// All mutation here is extension-only; game state and game-save keys are never touched.
++export function enforceRetention(data){
++ let changed=false;
++ const size=()=>JSON.stringify(data).length;
++ for(let i=data.experiments.length-1;i>=0&&size()>3_800_000;i--){if(data.experiments[i].result){delete data.experiments[i].result;changed=true}}
++ for(let i=data.books.length-1;i>=0&&size()>3_800_000;i--){const b=data.books[i];while(size()>3_800_000&&(b.events.length>1||b.traces.length||b.snapshots.length>1)){if(b.snapshots.length>1)b.snapshots.shift();else if(b.traces.length)b.traces.splice(0,Math.min(20,b.traces.length));else if(b.events.length>1)b.events.splice(0,Math.min(20,b.events.length-1));changed=true}}
++ return changed;
++}
+diff --git a/Auroral Commonwealth Stable v6/worldline/style.css b/Auroral Commonwealth Stable v6/worldline/style.css
+new file mode 100644
+index 0000000..a784623
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/style.css	
+@@ -0,0 +1 @@
++.wl-dialog{width:min(1450px,96vw);height:94vh;max-height:96vh;padding:24px;border:1px solid var(--line);border-radius:20px;background:var(--bg);color:var(--text);box-shadow:var(--shadow);overflow:auto}.wl-dialog::backdrop{background:rgba(2,9,20,.84);backdrop-filter:blur(7px)}.wl-header{display:flex;justify-content:space-between;gap:24px;border-bottom:1px solid var(--line);padding-bottom:20px;align-items:center}.wl-header h2{font-size:1.8rem;margin:6px 0}.wl-tabs{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}.wl-intro{margin:24px 0}.wl-intro h3{font-size:1.6rem;margin:12px 0}.wl-intro p{color:var(--muted);max-width:850px;line-height:1.6}.wl-dialog label{display:block;font-size:.84rem;color:var(--muted);margin:12px 0}.wl-dialog input,.wl-dialog select{display:block;width:100%;min-width:0;margin-top:6px;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--panel);color:var(--text)}.wl-dialog .panel{background:var(--panel);box-shadow:none}.wl-dialog .btn{background:var(--panel2)}.wl-dialog .btn.primary{background:linear-gradient(130deg,#1178a0,#5544a1);color:white}.wl-dialog pre{font:12px/1.6 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:380px;overflow:auto;background:var(--panel2);padding:12px;border-radius:8px}.wl-dialog details{margin:10px 0;line-height:1.6}.wl-dialog summary{cursor:pointer}.wl-dialog progress{width:100%;accent-color:var(--accent);margin-top:16px}.wl-branch{border:1px solid var(--line);border-radius:12px;margin:15px 0;padding:12px}.wl-branch legend{color:var(--accent);padding:0 8px}.wl-action{padding:6px 10px 12px;margin:12px 0;border-left:2px solid var(--accent);background:var(--panel2);display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.wl-saved{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding:16px 0}.wl-saved>div{min-width:0}.wl-results{margin-top:20px}.wl-filters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.wl-timeline{border-left:1px solid var(--line);margin:20px 0 20px 6px;padding-left:20px}.wl-entry{padding:14px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;background:var(--panel)}.wl-entry summary b,.wl-entry summary span{display:block}.wl-causal{margin-top:20px}.wl-rule{text-align:center;margin:18px 0;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}.wl-rule h4{color:var(--accent)}.wl-nav{border-top:1px solid var(--line);margin-top:16px;padding-top:14px}.wl-nav>.mini{font-size:9px;letter-spacing:.1em}.wl-dialog :focus-visible{outline:2px solid var(--accent);outline-offset:3px}.wl-dialog .notice{background:var(--panel2)}.wl-dialog .chart{background:var(--panel2)}.wl-dialog h4{margin:14px 0 8px}@media(max-width:1000px){.wl-dialog .two{grid-template-columns:1fr}.wl-filters{grid-template-columns:1fr 1fr}.wl-nav>.mini{display:none}}@media(max-width:600px){.wl-dialog{padding:14px;width:100vw;max-width:100vw;border-radius:0;height:100vh;max-height:100vh}.wl-header h2{font-size:1.3rem}.wl-tabs{gap:6px}.wl-tabs .btn{font-size:.8rem;padding:10px}.wl-action,.wl-filters{grid-template-columns:1fr}.wl-saved{flex-wrap:wrap}}@media(prefers-reduced-motion:reduce){.wl-dialog *{transition:none!important;animation:none!important}}@media print{.wl-dialog{position:static;width:100%;height:auto;overflow:visible}.wl-dialog button,.wl-tabs{display:none}.wl-dialog pre{max-height:none}}
+diff --git a/Auroral Commonwealth Stable v6/worldline/ui.js b/Auroral Commonwealth Stable v6/worldline/ui.js
+new file mode 100644
+index 0000000..dabea5a
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/ui.js	
+@@ -0,0 +1,105 @@
++import {clone,ledger,attach,observe,flatten,record,metrics,metricList,difference,diagnostics,report,dateLabel,uniqueId} from './core.js';
++import {createExperiment,runExperiment,ENGINE_VERSION,parseExperiment} from './engine.js';
++import {storeAdapter,parseArchive,csv,enforceRetention} from './storage.js';
++import {listSaves} from '../game/saveSystem.js';
++import {BUILDINGS} from '../game/infrastructure.js';
++import {TECHNOLOGIES} from '../data/technologies.js';
++import {drawChart} from '../ui/charts.js';
++const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
++const uid=uniqueId;
++const opt=(v,l)=>`<option value="${esc(v)}">${esc(l)}</option>`;
++const number=x=>Number.isFinite(x)?x.toLocaleString(undefined,{maximumFractionDigits:4}):'Unavailable';
++function download(name,body,type='application/json'){const url=URL.createObjectURL(new Blob([body],{type})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
++export function installSuite(api){
++ const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('./style.css',import.meta.url).href;document.head.append(css);
++ let storage;try{storage=localStorage}catch{storage={getItem(){throw Error('Browser storage unavailable')},setItem(){throw Error('Browser storage unavailable')}}}
++ const adapter=storeAdapter(storage),data=adapter.load(),known=new WeakMap();
++ let currentBook=null,dialog=null,tab='lab',selectedBook=null,result=null,currentExperiment=null,busy=false,abort=null,timer=null,selectedTrace=null;
++ let retentionNotice='';
++ const persist=()=>{clearTimeout(timer);if(enforceRetention(data))retentionNotice='Retention limit reached: older computed caches or archive details were trimmed. Experiment inputs remain available for replay.';adapter.save(data);if(dialog){const el=dialog.querySelector('#wl-storage');if(el)el.textContent=adapter.error||retentionNotice}};
++ const schedule=()=>{clearTimeout(timer);timer=setTimeout(persist,250)};
++ window.addEventListener('pagehide',persist);
++ const books=()=>[...data.books,...(result?.results.map(x=>x.ledger)||[])];
++ const book=()=>books().find(x=>x.id===selectedBook)||currentBook||books()[0];
++ function sync(){
++  const s=api.read();if(s&&!api.isMultiplayer()&&!known.has(s)){
++   const last=api.saveId?.()?data.books.find(b=>b.scope==='single-player'&&b.saveIds?.includes(api.saveId())):null;
++   currentBook=last||ledger('campaign-'+uid());
++   if(!last){record(currentBook,{tick:s.date.year*12+s.date.month,date:clone(s.date),countryId:s.countryId,category:'snapshot',source:'campaign-observed',kind:'periodic-summary',description:'Recording began here; earlier decisions are unavailable.',changes:{}});currentBook.snapshots.push({id:currentBook.id+':initial',eventId:currentBook.events[0].id,date:clone(s.date),tick:s.date.year*12+s.date.month,state:clone(s)});data.books.unshift(currentBook);data.books.splice(5)}
++   known.set(s,currentBook);attach(s,currentBook,{onChange:schedule});schedule();
++  }else if(s&&known.has(s))currentBook=known.get(s);
++  if(s&&!api.isMultiplayer()&&known.has(s)&&api.saveId?.()){const b=known.get(s);b.saveIds??=[];if(!b.saveIds.includes(api.saveId())){b.saveIds.push(api.saveId());b.saveIds=b.saveIds.slice(-12);schedule()}}
++  const side=document.querySelector('.sidebar');
++  if(side&&!side.querySelector('[data-worldline-open]')){const group=document.createElement('div');group.className='wl-nav';group.innerHTML='<div class="mini">WORLDLINE INTELLIGENCE</div>'+[['lab','◈ Worldline Lab'],['archives','▣ Auroral Archives'],['observatory','⌁ Observatory']].map(([id,label])=>`<button class="navbtn" data-worldline-open="${id}" title="${label}">${label}</button>`).join('');side.append(group);group.querySelectorAll('button').forEach(b=>b.onclick=()=>open(b.dataset.worldlineOpen))}
++  const menu=document.querySelector('.hero .actions');if(!side&&menu&&!menu.querySelector('[data-suite-menu]')){const b=document.createElement('button');b.className='btn';b.dataset.suiteMenu='';b.textContent='Worldline Intelligence';b.onclick=()=>open('lab');menu.append(b)}
++ }
++ function capture(e){
++  if(dialog?.open||api.isMultiplayer())return;
++  const target=e.target.closest?.('[data-action],[data-range],[data-choice],[data-country]'),s=api.read();if(!target||!s)return;
++  if(e.type==='click'&&target.hasAttribute('data-range'))return;
++  const label=target.dataset.action||(target.dataset.range?`policy:${target.dataset.range}:${target.dataset.key}`:target.dataset.choice!==undefined?'resolveEvent':'open-country');
++  if(['saveNew','goMenu','open-country'].includes(label))return;
++  const priorNotice=s.notifications?.[0];
++  const captured={before:flatten(s),inputs:{control:clone({...target.dataset}),value:target.value??null}};
++  queueMicrotask(()=>{const rejected=(s.notifications?.[0]!==priorNotice&&/Action could not be completed/.test(s.notifications?.[0]?.text||''))||!!target.querySelector('.badText');observe(s,label,()=>rejected?false:undefined,[],captured);schedule()});
++ }
++ document.addEventListener('click',capture,true);document.addEventListener('input',capture,true);document.addEventListener('change',capture,true);
++ function month(fn){const s=api.read();if(!s||api.isMultiplayer())return fn();return observe(s,'monthStep',fn)}
++ function open(which){
++  if(dialog){tab=which;render();return}
++  tab=which;dialog=document.createElement('dialog');dialog.className='wl-dialog';dialog.setAttribute('aria-label','Auroral Worldline Intelligence Suite');document.body.append(dialog);dialog.showModal();
++  dialog.addEventListener('keydown',e=>e.stopPropagation());dialog.addEventListener('close',()=>{abort?.abort();dialog.remove();dialog=null});api.pause();render();
++ }
++ function render(){
++  if(!dialog)return;
++  dialog.innerHTML=`<header class="wl-header"><div><div class="eyebrow">AURORAL CAUSAL CORE / 1.0</div><h2>Worldline Intelligence</h2><div class="mini">Investigate the nation you govern.</div></div><button class="btn" id="wl-close" aria-label="Close intelligence suite">Close ×</button></header><div class="wl-tabs" role="tablist">${[['lab','Worldline Lab'],['archives','Auroral Archives'],['observatory','Systems Observatory']].map(([id,label])=>`<button class="btn ${tab===id?'primary':''}" role="tab" aria-selected="${tab===id}" data-tab="${id}">${label}</button>`).join('')}</div><p id="wl-storage" class="warnText" role="status">${esc(adapter.error||retentionNotice)}</p><div id="wl-feedback" role="status" aria-live="polite"></div><section id="wl-body"></section>`;
++  dialog.querySelector('#wl-close').onclick=()=>dialog.close();dialog.querySelectorAll('[data-tab]').forEach(b=>{b.disabled=busy;b.onclick=()=>{tab=b.dataset.tab;render()}});
++  if(tab==='lab')renderLab();else if(tab==='archives')renderArchives();else renderObservatory();
++ }
++ const body=()=>dialog.querySelector('#wl-body');
++ function feedback(text,error=false){if(!dialog)return;const el=dialog.querySelector('#wl-feedback');el.textContent=text;el.className=error?'notice warning':'notice'}
++ async function guard(fn){try{await fn()}catch(e){feedback(e.message,true)}}
++ function selectedSource(){const val=dialog.querySelector('#wl-source').value;if(val==='current'){if(api.isMultiplayer())throw Error('Worldline Lab is disabled during multiplayer');return api.read()}if(val.startsWith('save:'))return listSaves().find(x=>x.id===val.slice(5))?.state;return book()?.snapshots.find(x=>x.id===val)?.state}
++ function renderLab(){
++  const s=api.read(),mp=api.isMultiplayer(),saves=listSaves().filter(x=>!x.state?.multiplayer),snaps=book()?.snapshots||[];
++  body().innerHTML=`<div class="wl-intro"><span class="pill">CONTROLLED ALTERNATE HISTORY</span><h3>One starting point. Different decisions.</h3><p>Branches execute the existing monthly simulation. Identical seeds and actions replay identically. Your live nation remains isolated.</p></div>${mp?'<div class="notice warning">Experiments are disabled during multiplayer. Server history is not instrumented; Archives contain local single-player records.</div>':''}<div class="grid two"><form id="wl-form" class="panel"><h3>Experiment parameters</h3><label>Starting snapshot<select id="wl-source" required>${s&&!mp?opt('current',s.name+' • current state'):''}${saves.map(x=>opt('save:'+x.id,x.name)).join('')}${snaps.filter(x=>!x.state.multiplayer).map(x=>opt(x.id,'Recorded snapshot • '+dateLabel(x.date))).join('')}</select></label><div class="grid two"><label>Experiment name<input id="wl-name" maxlength="100" value="National policy study" required></label><label>Seed<input id="wl-seed" type="number" min="0" max="4294967295" step="1" value="2035" required></label></div><label>Simulation horizon<select id="wl-horizon">${[3,6,12,24].map(x=>opt(x,x+' months')).join('')}</select></label><h4>Alternative branches</h4><div id="wl-branches"></div><button type="button" class="btn small" id="wl-add-branch">Add branch</button><p class="mini">Changes apply at the start of the selected month. Baseline policies remain unchanged. Rejected actions are recorded.</p><button class="btn primary" type="submit" ${mp||(!s&&!saves.length&&!snaps.length)?'disabled':''}>Run controlled experiment</button><div id="wl-progress" aria-live="polite"></div></form><div class="panel"><h3>Research registry</h3><div class="actions"><button class="btn small" id="wl-import">Import experiment JSON</button>${currentExperiment?'<button class="btn small" id="wl-export">Export current experiment</button>':''}</div><div id="wl-saved">${data.experiments.length?data.experiments.map(x=>`<div class="wl-saved"><div><b>${esc(x.name)}</b><div class="mini">${x.horizon} months • seed ${x.seed} • ${x.branches.length+1} branches</div></div><button class="btn small" data-replay="${esc(x.id)}" ${mp?'disabled':''}>Load & replay</button><button class="btn small" data-delete="${esc(x.id)}">Delete</button></div>`).join(''):'<p class="mini">No saved experiments. Completed runs are stored independently of game saves.</p>'}</div><details><summary>Model coverage and limitations</summary><p>Economy → government → resources → energy → trade → industry → research → achievements → crisis → date → history → events. No other human players or autonomous diplomatic decisions are advanced.</p><p>Event strategy: cheapest affordable option before the next month; definition order breaks ties. Final-month events remain pending. Random actions can shift subsequent draws.</p><p>Resource and energy units are abstract model units. Rule traces record function boundaries, not quantified contributions from individual inputs. Engine: <code>${esc(ENGINE_VERSION.slice(0,25))}…</code></p></details></div></div><div id="wl-results"></div>`;
++  dialog.querySelector('#wl-horizon').value='12';addBranch();
++  dialog.querySelector('#wl-add-branch').onclick=()=>{if(dialog.querySelectorAll('.wl-branch').length<3)addBranch()};
++  dialog.querySelector('#wl-form').onsubmit=e=>{e.preventDefault();guard(async()=>{if(mp)throw Error('Experiments are disabled during multiplayer');const branches=[...dialog.querySelectorAll('.wl-branch')].map((el,i)=>({id:'alternative-'+(i+1),name:el.querySelector('[data-branch-name]').value,actions:[...el.querySelectorAll('.wl-action')].map(readAction)}));currentExperiment=createExperiment(selectedSource(),{name:dialog.querySelector('#wl-name').value,seed:+dialog.querySelector('#wl-seed').value,horizon:+dialog.querySelector('#wl-horizon').value,branches});await run()})};
++  dialog.querySelector('#wl-import').onclick=()=>importFile(parseExperiment,async x=>{if(mp)throw Error('Experiments are disabled during multiplayer');currentExperiment=x;await run()});
++  if(currentExperiment)dialog.querySelector('#wl-export').onclick=()=>download('auroral-worldline.json',JSON.stringify(currentExperiment));
++  dialog.querySelectorAll('[data-replay]').forEach(b=>b.onclick=()=>guard(async()=>{if(mp)throw Error('Disabled during multiplayer');currentExperiment=clone(data.experiments.find(x=>x.id===b.dataset.replay));delete currentExperiment.result;await run()}));
++  dialog.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{data.experiments=data.experiments.filter(x=>x.id!==b.dataset.delete);persist();render()});
++  if(result)renderResults();
++ }
++ function addBranch(){const host=dialog.querySelector('#wl-branches'),index=host.children.length+1;const el=document.createElement('fieldset');el.className='wl-branch';el.innerHTML=`<legend>Branch ${index}</legend><label>Branch name<input data-branch-name maxlength="100" required value="Alternative ${index}"></label><div data-actions></div><div class="actions"><button type="button" class="btn small" data-add-action>Add decision</button><button type="button" class="btn small" data-remove-branch>Remove branch</button></div>`;host.append(el);el.querySelector('[data-add-action]').onclick=()=>{if(el.querySelectorAll('.wl-action').length<48)addAction(el)};el.querySelector('[data-remove-branch]').onclick=()=>{if(host.children.length>1)el.remove()};addAction(el)}
++ function addAction(branch){const row=document.createElement('div');row.className='wl-action';row.innerHTML=`<label>Month (0 = initial)<input data-month type="number" min="0" max="23" step="1" value="0" required></label><label>Decision<select data-kind>${[['tax','Tax policy'],['budget','Budget share'],['build','Build infrastructure'],['investIndustry','Invest 200B in industry'],['startResearch','Start research'],['signTradeAgreement','Trade agreement (60B)']].map(([id,l])=>opt(id,l)).join('')}</select></label><label>Target<select data-target></select></label><label data-value-label>Value (%)<input data-value type="number" min="0" max="60" step="0.1" value="30" required></label><button class="btn small" type="button" data-remove>Remove</button>`;branch.querySelector('[data-actions]').append(row);const update=()=>{const k=row.querySelector('[data-kind]').value,s=api.read()||listSaves()[0]?.state;const keys=k==='tax'?['income','corporate','sales','tariff','resource']:k==='budget'?['education','healthcare','infrastructure','defense','science','energy','transport','welfare','administration','environment']:k==='build'?Object.keys(BUILDINGS):k==='investIndustry'?Object.keys(s?.industries||{agriculture:0}):k==='startResearch'?TECHNOLOGIES.map(x=>x.id):[];row.querySelector('[data-target]').innerHTML=keys.map(x=>opt(x,x)).join('');row.querySelector('[data-target]').disabled=!keys.length;const value=row.querySelector('[data-value]');value.required=['tax','budget'].includes(k);row.querySelector('[data-value-label]').hidden=!value.required;value.min=k==='budget'?'.5':'0';value.max=k==='budget'?'12':'60';value.value=k==='budget'?'6':'30'};row.querySelector('[data-kind]').onchange=update;row.querySelector('[data-remove]').onclick=()=>row.remove();update()}
++ function readAction(row){const type=row.querySelector('[data-kind]').value,month=+row.querySelector('[data-month]').value,key=row.querySelector('[data-target]').value;return type==='tax'||type==='budget'?{month,type:'policy',group:type,key,value:+row.querySelector('[data-value]').value}:{month,type,args:type==='signTradeAgreement'?[]:[key]}}
++ async function run(){
++  if(busy)return;busy=true;abort=new AbortController();const controls=[...dialog.querySelectorAll('button,input,select')];controls.forEach(b=>{if(b.id!=='wl-close')b.disabled=true});
++  try{const progress=dialog.querySelector('#wl-progress');result=await runExperiment(currentExperiment,{signal:abort.signal,onProgress:p=>{if(progress)progress.innerHTML=`<progress max="${p.total}" value="${p.done}" aria-label="Simulated months"></progress><div>${esc(p.branch)} • month ${p.month} / ${currentExperiment.horizon} (${p.done}/${p.total} steps)</div>`}});currentExperiment={...currentExperiment,result};data.experiments=data.experiments.filter(x=>x.id!==currentExperiment.id);data.experiments.unshift(clone(currentExperiment));data.experiments.splice(5);persist();busy=false;render();feedback(adapter.error||retentionNotice||'Experiment completed. Live state and game saves were unchanged.',!!adapter.error)}finally{busy=false;controls.forEach(b=>{if(b.isConnected)b.disabled=false})}
++ }
++ function renderResults(){
++  const out=dialog.querySelector('#wl-results');if(!out)return;const baseline=result.results[0];
++  out.innerHTML=`<div class="panel wl-results"><div class="eyebrow">SIMULATION RESULTS</div><h3>${esc(currentExperiment?.name||'Experiment')}</h3><label>Inspect metric<select id="wl-metric">${metricList(baseline.finalState).map(([k,l,u])=>opt(k,l+' ('+u+')')).join('')}</select></label><div class="grid two" id="wl-charts"></div><div class="table-wrap"><table class="table"><thead><tr><th>Metric</th><th>Baseline</th>${result.results.slice(1).map(b=>`<th>${esc(b.name)}</th><th>Δ vs baseline</th>`).join('')}</tr></thead><tbody>${metricList(baseline.finalState).map(([k,l,u])=>{const a=baseline.series.at(-1).values[k];return `<tr><td>${esc(l)} <span class="mini">${esc(u)}</span></td><td>${number(a)}</td>${result.results.slice(1).map(b=>{const v=b.series.at(-1).values[k],d=difference(a,v);return `<td>${number(v)}</td><td>${number(d.absolute)} (${d.percent===null?'N/A':number(d.percent)+'%'})</td>`}).join('')}</tr>`}).join('')}</tbody></table></div><h4>Strongest relative differences</h4>${result.results.slice(1).map(b=>{const ranked=metrics.map(([k,l])=>({label:l,...difference(baseline.series.at(-1).values[k],b.series.at(-1).values[k])})).filter(x=>x.percent!==null).sort((a,b)=>Math.abs(b.percent)-Math.abs(a.percent)).slice(0,3);return `<p><b>${esc(b.name)}:</b> ${ranked.map(x=>esc(x.label)+' Δ '+number(x.absolute)+' ('+number(x.percent)+'%)').join('; ')}.</p>`}).join('')}<h4>Decisions and timelines</h4>${result.results.map(b=>`<div class="wl-saved"><div><b>${esc(b.name)}</b><div class="mini">${esc(b.series.at(-1).crisis)} • ${b.ledger.events.length} retained entries</div><pre>${esc(b.applied.length?JSON.stringify(b.applied,null,2):'Original baseline; no scheduled changes.')}</pre></div><div class="actions"><button class="btn small" data-history="${esc(b.ledger.id)}">Open Archives</button><button class="btn small" data-inspect="${esc(b.ledger.id)}">Inspect traces</button></div></div>`).join('')}<p class="mini">${esc(result.eventStrategy)} Relative change is unavailable at a zero baseline.</p></div>`;
++  const charts=()=>{const key=dialog.querySelector('#wl-metric').value,[,label,unit]=metricList(baseline.finalState).find(x=>x[0]===key),target=dialog.querySelector('#wl-charts');target.innerHTML=result.results.map(b=>`<div><h4>${esc(b.name)} • ${esc(label)}</h4><canvas class="chart" aria-label="${esc(b.name+' '+label)}"></canvas><details><summary>Time series (${esc(unit)})</summary><table class="table"><tbody>${b.series.map(x=>`<tr><td>${dateLabel(x.date)}</td><td>${number(x.values[key])}</td></tr>`).join('')}</tbody></table></details></div>`).join('');target.querySelectorAll('canvas').forEach((c,i)=>drawChart(c,result.results[i].series.map(x=>({value:x.values[key]})),'value',label+' • '+unit))};dialog.querySelector('#wl-metric').onchange=charts;requestAnimationFrame(()=>{if(dialog?.querySelector('#wl-metric'))charts()});out.querySelectorAll('[data-history]').forEach(b=>b.onclick=()=>{selectedBook=b.dataset.history;tab='archives';render()});out.querySelectorAll('[data-inspect]').forEach(b=>b.onclick=()=>{selectedBook=b.dataset.inspect;tab='observatory';render()});
++ }
++ function commonHeader(title){return `<div class="wl-intro"><span class="pill">SHARED HISTORICAL LEDGER</span><h3>${title}</h3></div><label>Record collection<select id="wl-book">${books().map(b=>opt(b.id,b.id+' • '+b.scope)).join('')}</select></label>${!books().length?'<p class="notice">No history yet. Start a single-player nation or import an archive. Earlier gameplay cannot be reconstructed.</p>':''}`}
++ function bindBook(){const select=dialog.querySelector('#wl-book');if(book())select.value=book().id;select.onchange=()=>{selectedBook=select.value;selectedTrace=null;render()}}
++ function renderArchives(){
++  const b=book();body().innerHTML=commonHeader('Auroral Archives')+(b?`<p class="mini">${esc(b.scope)} • retained history only. Imported records are supplied data, not authenticated engine evidence.</p><div class="wl-filters"><label>Country<select id="wl-country">${opt('','All countries')}${[...new Set(b.events.map(e=>e.countryId))].map(x=>opt(x,x)).join('')}</select></label><label>Event type<select id="wl-category">${opt('','All types')}${[...new Set(b.events.map(e=>e.category))].map(x=>opt(x,x)).join('')}</select></label><label>System<select id="wl-system">${opt('','All systems')}${[...new Set(b.events.map(e=>e.source))].map(x=>opt(x,x)).join('')}</select></label><label>From (YYYY-MM)<input id="wl-from" placeholder="2035-01"></label><label>To (YYYY-MM)<input id="wl-to" placeholder="2036-12"></label></div><div class="actions"><button class="btn small" id="wl-json">Export archive JSON</button><button class="btn small" id="wl-csv">Export CSV</button><button class="btn small" id="wl-report">Generate dossier</button></div><label>Document type<select id="wl-report-type">${['National history','Classified intelligence briefing','Economic assessment','Diplomatic memorandum','Crisis investigation','Newspaper report','Commonwealth historical record','Alternate-history chronicle'].map(x=>opt(x,x)).join('')}</select></label><div id="wl-timeline" class="wl-timeline"></div>`:'')+'<button class="btn small" id="wl-archive-import">Import archive JSON</button>';
++  bindBook();dialog.querySelector('#wl-archive-import').onclick=()=>importFile(parseArchive,x=>{if(data.books.some(b=>b.id===x.id&&b.scope!=='imported-record'))throw Error('Archive ID already belongs to a native campaign. Export from a separate collection.');data.books=data.books.filter(b=>b.id!==x.id);data.books.unshift(x);data.books.splice(5);selectedBook=x.id;persist();render()});if(!b)return;
++  const timeline=()=>{const country=dialog.querySelector('#wl-country').value,category=dialog.querySelector('#wl-category').value,system=dialog.querySelector('#wl-system').value,from=dialog.querySelector('#wl-from').value,to=dialog.querySelector('#wl-to').value;const entries=b.events.filter(e=>(!country||e.countryId===country)&&(!category||e.category===category)&&(!system||e.source===system)&&(!from||dateLabel(e.date)>=from)&&(!to||dateLabel(e.date)<=to));dialog.querySelector('#wl-timeline').innerHTML=entries.length?entries.slice().reverse().map(e=>`<details class="wl-entry" data-entry="${esc(e.id)}"><summary><span class="mini">${dateLabel(e.date)} • ${esc(e.category)} • ${esc(e.kind||'record')}</span><b>${esc(e.description)}</b></summary><div class="mini">ID ${esc(e.id)} • Country ${esc(e.countryId)} • Rule ${esc(e.source)}</div><pre>${esc(JSON.stringify(e.changes,null,2))}</pre>${e.traceId?`<button class="btn small" data-trace="${esc(e.traceId)}">Inspect supporting trace</button>`:'<p class="mini">No function trace is retained for this entry.</p>'}</details>`).join(''):'<p class="mini">No entries match these filters.</p>';dialog.querySelectorAll('[data-trace]').forEach(btn=>btn.onclick=()=>{selectedTrace=btn.dataset.trace;selectedBook=b.id;tab='observatory';render()})};dialog.querySelectorAll('.wl-filters input,.wl-filters select').forEach(x=>x.oninput=timeline);timeline();
++  dialog.querySelector('#wl-json').onclick=()=>guard(()=>download('auroral-archive.json',adapter.exportArchive(b)));dialog.querySelector('#wl-csv').onclick=()=>download('auroral-history.csv',csv(b),'text/csv');dialog.querySelector('#wl-report').onclick=()=>dossier(b,dialog.querySelector('#wl-report-type').value);
++ }
++ function dossier(b,type){const text=report(b,type),html=`<!doctype html><html lang="en"><meta charset="utf-8"><title>${esc(type)}</title><style>body{font:14px/1.6 Georgia,serif;max-width:850px;margin:40px auto;padding:20px;color:#182b3a}h1{border-bottom:3px solid #ab8a4e}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.6 ui-monospace,monospace}@media print{body{margin:0}}</style><h1>${esc(type)}</h1><p>Auroral Commonwealth · Historical Directorate</p><pre>${esc(text)}</pre></html>`;download('auroral-dossier.html',html,'text/html');feedback('Dossier exported as print-friendly HTML. Factual entries come from the selected ledger.')}
++ function renderObservatory(){
++  const b=book();body().innerHTML=commonHeader('Systems Observatory')+(b?`<p class="notice">Live traces cover the complete monthly step and UI decisions. Worldline branches additionally expose engine functions. Observed inputs do not quantify an isolated causal contribution.</p><div class="grid two"><div class="panel"><h3>Variable → executed rule</h3><label>Changed variable<select id="wl-variable">${opt('','All recorded changes')}${[...new Set(b.traces.flatMap(t=>Object.keys(t.changes)))].sort().map(x=>opt(x,x)).join('')}</select></label><label>Function trace<select id="wl-trace"></select></label><div id="wl-trace-detail"></div></div><div class="panel"><h3>Historical state inspection</h3><label>Exact recorded snapshot<select id="wl-snapshot">${b.snapshots.map(x=>opt(x.id,dateLabel(x.date)+' • '+x.id)).join('')}</select></label><div id="wl-diagnostics"></div><details><summary>Read-only recorded state</summary><pre id="wl-state"></pre></details><button class="btn small" id="wl-crisis">Follow crisis records backward</button></div></div>`:'');bindBook();if(!b)return;
++  const detail=()=>{const t=b.traces.find(x=>x.id===dialog.querySelector('#wl-trace').value),el=dialog.querySelector('#wl-trace-detail');if(!t){el.innerHTML='<p class="mini">No matching trace is retained.</p>';return}selectedTrace=t.id;el.innerHTML=`<div class="wl-causal"><div><h4>Observed inputs</h4>${Object.entries(t.inputs).map(([k,v])=>`<details><summary>${esc(k)}</summary><pre>${esc(JSON.stringify(v,null,2))}</pre></details>`).join('')}</div><div class="wl-rule"><span>↓ Executed function</span><h4>${esc(t.rule)}</h4><span>↓ Recorded changes</span></div><div class="table-wrap"><table class="table"><thead><tr><th>Variable</th><th>Before</th><th>After</th><th>Δ</th></tr></thead><tbody>${Object.entries(t.changes).map(([k,c])=>`<tr><td>${esc(k)}</td><td>${esc(typeof c.before==='number'?number(c.before):c.before)}</td><td>${esc(typeof c.after==='number'?number(c.after):c.after)}</td><td>${number(c.delta)}</td></tr>`).join('')}</tbody></table></div></div><p class="mini">${esc(t.evidence||'Imported evidence')}</p><div class="actions"><button class="btn small" id="wl-trace-export">Export trace</button><button class="btn small" id="wl-entry-open">Open archive entry</button></div>`;el.querySelector('#wl-trace-export').onclick=()=>download('auroral-trace.json',JSON.stringify(t,null,2));el.querySelector('#wl-entry-open').onclick=()=>{tab='archives';render();const item=[...dialog.querySelectorAll('[data-entry]')].find(x=>x.dataset.entry===t.eventId);if(item){item.open=true;item.scrollIntoView({block:'nearest'})}else feedback('Referenced event is outside retained history.',true)}};
++  const list=()=>{const key=dialog.querySelector('#wl-variable').value,items=b.traces.filter(t=>!key||Object.hasOwn(t.changes,key));dialog.querySelector('#wl-trace').innerHTML=items.slice().reverse().map(t=>opt(t.id,dateLabel(t.date)+' • '+t.rule+' • '+t.id)).join('');if(items.some(x=>x.id===selectedTrace))dialog.querySelector('#wl-trace').value=selectedTrace;detail()};
++  dialog.querySelector('#wl-variable').onchange=list;dialog.querySelector('#wl-trace').onchange=detail;list();
++  const historical=()=>{const snap=b.snapshots.find(x=>x.id===dialog.querySelector('#wl-snapshot').value),s=snap?.state;dialog.querySelector('#wl-state').textContent=s?JSON.stringify(s,null,2):'No exact state snapshot is retained.';dialog.querySelector('#wl-diagnostics').innerHTML=s?`<p class="mini">Exact state at this boundary. No interpolation or reconstruction.</p>${diagnostics(s).map(d=>`<div class="notice warning">${esc(d.key)}: ${esc(d.issue)}</div>`).join('')||'<p>No configured diagnostics triggered.</p>'}`:''};dialog.querySelector('#wl-snapshot').onchange=historical;historical();dialog.querySelector('#wl-crisis').onclick=()=>{tab='archives';render();const category=dialog.querySelector('#wl-category');if([...category.options].some(x=>x.value==='crisis')){category.value='crisis';category.oninput()}else{const system=dialog.querySelector('#wl-system');system.value='monthStep';system.oninput();feedback('Live crisis changes appear under collapseStage in monthly records.')}};
++ }
++ function importFile(parser,accept){const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.onchange=()=>guard(async()=>{const file=input.files?.[0];if(!file)return;if(file.size>4_000_000)throw Error('File exceeds 4 MB');await accept(parser(await file.text()))});input.click()}
++ return {sync,month};
++}
+diff --git a/Auroral Commonwealth Stable v6/worldline/validate.mjs b/Auroral Commonwealth Stable v6/worldline/validate.mjs
+new file mode 100644
+index 0000000..8c7da50
+--- /dev/null
++++ b/Auroral Commonwealth Stable v6/worldline/validate.mjs	
+@@ -0,0 +1,45 @@
++import assert from 'node:assert/strict';
++import fs from 'node:fs';
++import path from 'node:path';
++import crypto from 'node:crypto';
++import {fileURLToPath} from 'node:url';
++import {COUNTRIES} from '../data/countries.js';
++import {createState} from '../game/state.js';
++import {createExperiment,runExperiment,parseExperiment,validateExperiment,prepareState,step,validateJSON} from './engine.js';
++import {ledger,attach,seeded,clone,observe,LIMITS,difference,report,diagnostics} from './core.js';
++import {setPolicyValue,borrow} from './generated/game/government.js';
++import {computeMonthlyEconomy} from './generated/game/economy.js';
++import {resolveEvent} from './generated/game/events.js';
++import {storeAdapter,STORAGE_KEY,parseArchive,validateLedger,csv,enforceRetention} from './storage.js';
++const dir=path.dirname(fileURLToPath(import.meta.url));
++let passed=0;
++const test=async(name,fn)=>{await fn();passed++;console.log('  PASS '+name)};
++const run=x=>runExperiment(x,{yieldControl:async()=>{}});
++const state=createState(COUNTRIES[0]);
++const experiment=createExperiment(state,{id:'validation',seed:917,horizon:3,branches:[{id:'same',name:'Same policies',actions:[]},{id:'changed',name:'Higher taxes',actions:[{month:0,type:'policy',group:'tax',key:'income',value:46}]}]});
++const original=JSON.stringify(state),random=Math.random;
++let results;
++await test('Seeded source replays without replacing global randomness',()=>{const a=seeded(42),b=seeded(42);assert.deepEqual(Array.from({length:100},a),Array.from({length:100},b));assert.equal(random,Math.random)});
++await test('State and save isolation across complete experiment',async()=>{results=await run(experiment);assert.equal(JSON.stringify(state),original);assert.equal(experiment.baseline.taxes.income,state.taxes.income);assert.equal(random,Math.random)});
++await test('Identical branches and replay produce identical complete results',async()=>{assert.deepEqual(results.results[0].finalState,results.results[1].finalState);assert.deepEqual(results,await run(experiment))});
++await test('Validated policy generates real engine differences',()=>{assert.notEqual(results.results[0].finalState.lastMonthly.revenue,results.results[2].finalState.lastMonthly.revenue);assert.equal(results.results[2].finalState.taxes.income,46);assert.equal(results.results[2].applied[0].accepted,true)});
++await test('Scheduled policy timing and clamped effective values',async()=>{const e=createExperiment(state,{id:'timing',horizon:3,branches:[{id:'late',name:'Delayed policy',actions:[{month:2,type:'policy',group:'tax',key:'income',value:999}]}]});const r=await run(e);assert.deepEqual(r.results[0].series.slice(0,3),r.results[1].series.slice(0,3));assert.equal(r.results[1].finalState.taxes.income,60)});
++await test('Traces exactly match actual before, after and delta',()=>{const s=clone(state),book=ledger('trace');attach(s,book,{rng:seeded(9)});const before=s.gdp;computeMonthlyEconomy(s);const t=book.traces[0];assert.equal(t.changes.gdp.before,before);assert.equal(t.changes.gdp.after,s.gdp);assert.equal(t.changes.gdp.delta,s.gdp-before);assert.equal(t.inputs.gdp,before);assert.equal(book.events[0].traceId,t.id);assert.equal(t.eventId,book.events[0].id)});
++await test('Observed decisions and rejected engine actions are recorded',()=>{const s=clone(state),b=ledger('actions');attach(s,b);setPolicyValue(s,'tax','income',25);const n=b.events.length;setPolicyValue(s,'tax','income',25);assert.equal(b.events.length,n);assert.equal(borrow(s,-10),false);assert.equal(b.events.at(-1).category,'diagnostic')});
++await test('Observer failures do not change actual engine execution',()=>{const s=clone(state);attach(s,ledger('observer'),{onChange:()=>{throw Error('Quota')}});assert.equal(setPolicyValue(s,'tax','income',32),true);assert.equal(s.taxes.income,32);let calls=0;assert.throws(()=>observe(s,'throwing',()=>{calls++;throw Error('engine')}));assert.equal(calls,1)});
++await test('Seeded event-choice randomness is replayable',()=>{const a=clone(state),b=clone(state);for(const s of [a,b]){s.pendingEvent={id:'trade_boom'};attach(s,ledger('event'),{rng:seeded(12)});assert.equal(resolveEvent(s,1),true)}assert.deepEqual(a,b)});
++await test('All horizons run with finite metrics and bounded ledgers',async()=>{for(const horizon of [3,6,12,24]){const e=createExperiment(state,{id:'horizon-'+horizon,horizon});const r=await run(e);for(const b of r.results){assert.equal(b.series.length,horizon+1);for(const row of b.series)for(const v of Object.values(row.values))assert.ok(v===null||Number.isFinite(v));assert.ok(b.ledger.events.length<=LIMITS.events);assert.ok(b.ledger.traces.length<=LIMITS.traces);assert.ok(b.ledger.snapshots.length<=LIMITS.snapshots);validateLedger(b.ledger)}}});
++await test('All 202 roster entries run through actual isolated monthly sequence',()=>{for(const country of COUNTRIES){const s=prepareState(createState(country));attach(s,ledger(country.id),{rng:seeded(1)});step(s);assert.equal(diagnostics(s).some(x=>x.issue==='Non-finite value'),false)}});
++await test('Experiment JSON roundtrip preserves replay',async()=>{const loaded=parseExperiment(JSON.stringify(experiment));assert.deepEqual(await run(loaded),results)});
++await test('Archive roundtrip, CSV and factual template report',()=>{const book=results.results[2].ledger;const adapter=storeAdapter({});const parsed=parseArchive(adapter.exportArchive(book));assert.deepEqual(parsed.events,book.events);assert.equal(parsed.scope,'imported-record');assert.ok(csv(book).includes('computeMonthlyEconomy'));const text=report(book);assert.ok(text.includes(book.events[0].id));assert.ok(text.includes('No unrecorded treaties'));const before=JSON.stringify(book);report(book,'Crisis investigation');assert.equal(JSON.stringify(book),before)});
++await test('Refresh persistence and stored experiment results',()=>{const values=new Map(),store={getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v)},a=storeAdapter(store),data={schema:1,books:[results.results[2].ledger],experiments:[{...experiment,result:results}]};assert.equal(a.save(data),true,a.error);const fresh=storeAdapter(store).load();assert.deepEqual(fresh,data);assert.ok(values.has(STORAGE_KEY))});
++await test('Malformed imports, future schemas and unsafe keys rejected',()=>{for(const text of ['null','[]','{}','{"__proto__":{}}','{"schema":99}'])assert.throws(()=>parseExperiment(text));assert.throws(()=>parseArchive('{"schema":1,"kind":"auroral-archive","ledger":{}}'));assert.throws(()=>validateExperiment({...experiment,engineVersion:'future'}));assert.throws(()=>validateExperiment({...experiment,horizon:1000}));assert.throws(()=>validateExperiment({...experiment,seed:-1}));assert.throws(()=>validateExperiment({...experiment,branches:[{id:'baseline',name:'Invalid',actions:[]}]}));assert.throws(()=>validateJSON(JSON.parse('{"x":{"constructor":{}}}')));assert.throws(()=>prepareState({...state,multiplayer:true}));assert.throws(()=>prepareState({...state,gdp:NaN}))});
++await test('Invalid scheduled actions and prototype keys are rejected',()=>{for(const action of [{month:4,type:'policy',group:'tax',key:'income',value:3},{month:0,type:'policy',group:'tax',key:'__proto__',value:3},{month:0,type:'__proto__',args:[]}])assert.throws(()=>createExperiment(state,{id:'bad',horizon:3,branches:[{id:'bad',name:'Bad',actions:[action]}]}))});
++await test('Storage corruption and quota failures remain graceful',()=>{const a=storeAdapter({getItem:()=>'{broken',setItem(){throw Error('quota')}});assert.deepEqual(a.load().books,[]);assert.ok(a.error);assert.equal(a.save({schema:1,books:[],experiments:[]}),false);assert.match(a.error,/quota/)});
++await test('Zero and missing baseline comparison is safe',()=>{assert.deepEqual(difference(0,3),{absolute:3,percent:null});assert.deepEqual(difference(null,3),{absolute:null,percent:null});assert.equal(difference(-10,-5).percent,50)});
++await test('Cancellation cannot corrupt the source state',async()=>{const controller=new AbortController();controller.abort();await assert.rejects(runExperiment(experiment,{signal:controller.signal}));assert.equal(JSON.stringify(state),original)});
++await test('Generated simulation is fresh and randomness audit is complete',()=>{const manifest=JSON.parse(fs.readFileSync(path.join(dir,'generated/manifest.json')));for(const [file,hash] of Object.entries(manifest.hashes)){const raw=fs.readFileSync(path.join(dir,'..',file),'utf8');assert.equal(crypto.createHash('sha256').update(raw).digest('hex'),hash,'Rebuild stale generated module: '+file);const generated=fs.readFileSync(path.join(dir,'generated',file),'utf8');if(file!=='game/saveSystem.js')assert.ok(!generated.includes('Math.random()'),file)}const source=fs.readFileSync(path.join(dir,'../main.js'),'utf8');assert.ok(source.includes('worldlineSuite.month'));assert.ok(source.includes('worldlineSuite.sync'))});
++await test('Four-branch 24-month results save and import within the file bound',async()=>{const e=createExperiment(state,{id:'largest',horizon:24,branches:[1,2,3].map(i=>({id:'b'+i,name:'Branch '+i,actions:[]}))});const result=await run(e),saved={...e,result};validateJSON(saved);const imported=parseExperiment(JSON.stringify(saved));assert.equal(imported.result,undefined);assert.equal(imported.horizon,24)});
++await test('Extension retention preserves replay inputs while bounding computed caches',()=>{const data={schema:1,books:[],experiments:[{...experiment,result:{padding:'x'.repeat(2_000_000)}},{...experiment,id:'older',result:{padding:'x'.repeat(2_000_000)}}]};assert.equal(enforceRetention(data),true);assert.ok(JSON.stringify(data).length<=3_800_000);assert.equal(data.experiments.length,2);assert.equal(data.experiments[1].result,undefined);assert.ok(data.experiments[1].baseline)});
++await test('Monthly sequence matches the active game and overlay identity is fresh',()=>{const names=['computeMonthlyEconomy','applyGovernmentEffects','updateResources','updateEnergy','updateTrade','updateIndustries','updateResearch','checkAchievements','updateCollapse','advanceDate','snapshot','maybeEvent'];const main=fs.readFileSync(path.join(dir,'../main.js'),'utf8').split('function monthStep(){')[1].split('const autosaveEvery')[0];const engine=fs.readFileSync(path.join(dir,'engine.js'),'utf8').split('export function step(s){')[1].split('export async function')[0];const sequence=source=>[...source.matchAll(/(\w+)\(s(?:tate)?\)/g)].map(x=>x[1]).filter(x=>names.includes(x));assert.deepEqual(sequence(engine),sequence(main));const manifest=JSON.parse(fs.readFileSync(path.join(dir,'generated/manifest.json')));for(const [file,hash] of Object.entries(manifest.overlayHashes))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(dir,file))).digest('hex'),hash)});
++console.log(`AURORAL WORLDLINE validation PASS — ${passed} regression groups`);

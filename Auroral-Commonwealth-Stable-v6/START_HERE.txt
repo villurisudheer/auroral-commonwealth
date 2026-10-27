@@ -1,0 +1,22 @@
+Auroral Commonwealth - Worldline Intelligence Suite 1.0
+
+Option A: Extract the included Auroral Commonwealth Stable v6 folder.
+Open a terminal there and run: npm start
+Open http://localhost:8000 and select a nation. The new suite is in the game sidebar.
+
+Option B: From an existing repository at base commit fba3feaaa175a27c535420e44467108381a8b12c,
+run: git apply --check Worldline_Update.patch
+then: git apply Worldline_Update.patch
+
+Tests: npm run validate
+Server/WebSocket tests: node worldline/smoke.mjs
+
+Details: Auroral Commonwealth Stable v6/worldline/README.md
+Test evidence/limits: Auroral Commonwealth Stable v6/worldline/TEST_REPORT.md
+
+All original source lines are retained. Existing-code changes are appended hooks,
+appended validation and an added guard around the reproduced LAN-discovery startup error.
+Historical edition folders are not included or changed.
+
+Browser layout/end-to-end interaction remain unverified in this environment.
+The GitHub integration rejected publishing the branch (HTTP 403); no remote branch or PR was created.
