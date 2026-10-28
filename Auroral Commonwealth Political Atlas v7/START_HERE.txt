@@ -1,0 +1,35 @@
+AURORAL COMMONWEALTH - POLITICAL ATLAS
+
+SOURCE-BASED HISTORICAL PREVIEW: 1783 coverage is incomplete. The red 1942 layer
+shows selected annual-resolution territorial reconstructions, not a verified
+worldwide daily occupation map. Read atlas/README.md for detailed accuracy limits.
+
+LAUNCH (Node 18+):
+Extract the included Auroral Commonwealth Stable v6 folder.
+Open a terminal inside it and run npm start (Windows PowerShell: npm.cmd start).
+Open http://localhost:8000. New Game now has 2026 / 1942 / 1919 / 1783 tabs.
+The in-game Political Atlas is accessible from the sidebar.
+Green outlines: source-coded state/dependency boundaries.
+Red dashed outlines: selected provisional wartime territorial extents.
+Grey land: historical coverage gaps on a modern reference coastline.
+
+2026 roster: 193 UN members + 2 observers, 2 other associated non-member states,
+8 disputed entities and 3 existing fictional nations. The four requested menu
+categories are preserved; they are membership groupings, not UN recognition judgments.
+Historical scenarios use synthetic economic values, not historical measurements.
+Existing game saves, 2D Command Deck, admin console and Worldline Suite are retained.
+
+DOCUMENTATION: atlas/README.md
+TEST EVIDENCE: atlas/TEST_REPORT.md
+Tests: npm run validate
+Server checks: node worldline/smoke.mjs; node command/smoke.mjs; node atlas/server-test.mjs
+
+PATCH OPTION:
+Political_Atlas_Update.patch applies to the previous 2D Command Deck update (c2b2721).
+Complete_Update.patch applies to the original repository baseline (fba3fea).
+Run git apply --check before applying a patch. Do not apply both patches.
+
+No original repository source lines were deleted or replaced. Two extension
+smoke-test constants were corrected to match the expanded shared roster.
+Full browser end-to-end interaction remains unverified here.
+ML remains deferred until requested.
