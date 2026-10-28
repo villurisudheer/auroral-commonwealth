@@ -1,0 +1,5 @@
+// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
+import {observe} from '../../core.js';
+function raw_updateCollapse(s){let score=0;if(s.debt/s.gdp>1.7)score++;if(s.inflation>15)score++;if(s.unemployment>18)score++;if(s.approval<25)score++;if(s.stability<30)score++;if(s.energy.production/s.energy.consumption<.75)score++;const prev=s.collapseStage;s.collapseStage=score>=5?'Collapse':score>=4?'Emergency':score>=3?'Crisis':score>=2?'Warning':'Stable';if(prev!==s.collapseStage)s.notifications.unshift({type:s.collapseStage==='Stable'?'information':'crisis',text:`National condition: ${s.collapseStage}`});return s.collapseStage}
+
+export function updateCollapse(s,...args){return observe(s,'updateCollapse',()=>raw_updateCollapse(s,...args),args)}
