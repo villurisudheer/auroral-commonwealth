@@ -1,0 +1,34 @@
+{
+  "overlay": "1.0.0",
+  "engine": "6.1.0",
+  "digest": "b034cd03db97636c118bf58d584f3be50fd23f70ee7631d6a35fb770fa010a87",
+  "hashes": {
+    "data/events.js": "20ffb66486c2750c893d7be0bb9a144cc272d8d55e8695dcd6e8d265a651629e",
+    "game/achievements.js": "3d200f245cd0ecca4b04f752776d0dc5dd92fafe9c6f40f402e50dff8e3807a5",
+    "game/collapse.js": "8cdfdf04df998f173acb549935848a8ff3fd539562458de46fe1358ae4710e4c",
+    "game/commonwealth.js": "4ecde433cd1514a5f2567086446426ace5f10db1539b7fff805df68edbd0e214",
+    "game/diplomacy.js": "926bed2dacbf9e14930ce8482912bcc31bf7664faabb16ca2c20d36872a6387b",
+    "game/economy.js": "2710f447be4babe2183c876a2ad73123310431efc888c212559040c22ea657ce",
+    "game/events.js": "4035fcf494fdaa09a7acf537e0a23868bbc7c8d47488a5a4354e1a1b1f932018",
+    "game/gameTime.js": "dc877b03f12ba8c17e608859ffd8c3966cf03f6a87191e5b6a36ffa7d5f8c462",
+    "game/government.js": "b27b42519fac3045fc92bc38456ee8f5eb15fdb63d6ad98b37ed0477770db9ab",
+    "game/industries.js": "117e933bc9058d44b0386bbab3608a0595b756ec76e84bf8da548ea80a09e7b2",
+    "game/infrastructure.js": "395f785a325d2308f10aacba1aef96101959cdbcc1b8c26bf4339901dc84e43b",
+    "game/resources.js": "a3f538a798fb6fc1e1aa0646a74fee2051c1a1437f2bbab70a8d84457f2eb8bc",
+    "game/saveSystem.js": "8d669c01b0fc2bc3908a2bd049eefa0c4a40a9dbaa7dc6d8ecbb89afd7fab8be",
+    "game/state.js": "6f7ff3a565d3ce168d9d837c3c9263b736e42873f879cb0da74ecc346a85e449",
+    "game/technology.js": "43397912da7b87ae5611a3453c3c5a97f813e4ce0a4a5fcf3103508b34185cfc",
+    "game/trade.js": "077ed77560c054266a2f4e2c42999c90994541a0b962b1e148f6858486a5ec4f"
+  },
+  "overlayHashes": {
+    "engine.js": "ebe6165c597c372c1fa31efe294de271b4eaaa7498afd0f1560412db97d7ed9b",
+    "core.js": "f46ec1c86bbbce688e493cfd37a547d27ca94e5d085cc8d49b4f9d7b38971ec7",
+    "build.mjs": "878cdeb6025784e1eed027cc08d0275b9a44fe4d61feca3e57cad1a148d7108c"
+  },
+  "extension": "Chronicle 7.1.0",
+  "extensionHashes": {
+    "chronicle/economy.js": "16927435b597398025c480eaea9be58ca71b1bb7b164e66a6c02aaf41b46bfc2",
+    "chronicle/data/currencies.js": "99ac78055856dbf6b69ee238e037cdc3eb9544bb4381cc2834123431b346b163",
+    "chronicle/data/eras.js": "e63bc86da2fab0840987bcd0b86bd2ea7abd7c03cdf1378a37c2124b10264f93"
+  }
+}

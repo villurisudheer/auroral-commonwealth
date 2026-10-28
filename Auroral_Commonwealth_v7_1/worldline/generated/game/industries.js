@@ -1,0 +1,13 @@
+// Generated from the unchanged Stable v6.1 source by worldline/build.mjs.
+import {observe} from '../../core.js';
+import {stateRandom} from '../../core.js';
+function raw_investIndustry(s,key,amount=200){
+ amount=Number(amount);const x=s.industries?.[key];
+ if(!x||!Number.isFinite(amount)||amount<=0||s.treasury<amount)return false;
+ s.treasury-=amount;x.investment+=amount;x.level+=amount/180;x.revenue*=1+amount/10000;s.industryIndex+=amount/2200;return true;
+}
+function raw_updateIndustries(s){for(const x of Object.values(s.industries)){const margin=(x.revenue-x.cost)/Math.max(1,x.revenue);x.level=Math.max(1,x.level*(1+margin*.002+(stateRandom(s)-.5)*.003));x.workers=Math.max(.05,x.workers*(1+(s.gdp>0?.001:0)-s.unemployment*.00008));x.revenue*=1+(s.productivity-1)*.003+(s.techLevel-70)*.00005;x.cost*=1+s.inflation/1200} s.industryIndex=Object.values(s.industries).reduce((a,x)=>a+x.level,0)/1.05}
+
+export function investIndustry(s,...args){return observe(s,'investIndustry',()=>raw_investIndustry(s,...args),args)}
+
+export function updateIndustries(s,...args){return observe(s,'updateIndustries',()=>raw_updateIndustries(s,...args),args)}

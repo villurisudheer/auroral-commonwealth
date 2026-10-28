@@ -1,0 +1,21 @@
+{
+  "currencySource": {
+    "publisher": "SIX, ISO 4217 Maintenance Agency",
+    "published": "2026-09-17",
+    "url": "https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml",
+    "sha256": "33139b438657d1cee116ba737807ea71d19d6de4b90f799a09c56f0cc6a1b0ff"
+  },
+  "historicalAnnualInflation": {
+    "publisher": "UK House of Commons Library",
+    "source": "Research Paper 02/44, table 1",
+    "url": "https://researchbriefings.files.parliament.uk/documents/RP02-44/RP02-44.pdf",
+    "references": {
+      "United Kingdom 1917": 25.2,
+      "United Kingdom 1942": 7.5
+    },
+    "precision": "Annual year-on-year price change reference, not start-month CPI; does not capture all wartime black-market prices"
+  },
+  "otherInflation": "Era/country gameplay calibrations; not observed CPI. Modern starting values are inherited reference game values, not live 2026 statistics.",
+  "historicalCurrencies": "Major polity/period denomination conventions with explicit unverified local-accounting fallbacks. Not a complete or individually verified currency history for every polity.",
+  "monetaryAmounts": "Scaled local gameplay accounting units; no actual historical GDP or live exchange rate conversion."
+}

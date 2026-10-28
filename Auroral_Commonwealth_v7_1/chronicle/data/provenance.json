@@ -1,0 +1,283 @@
+{
+  "release": "7.1.0",
+  "sources": {
+    "cliopatria.zip": {
+      "sha256": "e10a4e429fca708788ff9e7572a95fce801fae55852d217cffabc1c59cd4eed4",
+      "url": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "license": "CC BY 4.0"
+    },
+    "cshapes.geojson": {
+      "sha256": "384b1ea90b9419f30a858d7ec237c85a22c60d1b35b5f85f215a1204f9989d42",
+      "url": "https://icr.ethz.ch/data/cshapes/",
+      "license": "CC BY-NC-SA 4.0"
+    }
+  },
+  "counts": {
+    "wwii": {
+      "states": 169,
+      "extents": 7,
+      "selectable": 173
+    },
+    "wwi": {
+      "states": 152,
+      "extents": 3,
+      "selectable": 152
+    },
+    "unification": {
+      "states": 112,
+      "extents": 0,
+      "selectable": 112
+    },
+    "napoleonic": {
+      "states": 124,
+      "extents": 0,
+      "selectable": 124
+    },
+    "westphalia": {
+      "states": 114,
+      "extents": 0,
+      "selectable": 114
+    },
+    "encounters": {
+      "states": 127,
+      "extents": 0,
+      "selectable": 127
+    },
+    "constantinople": {
+      "states": 128,
+      "extents": 0,
+      "selectable": 128
+    },
+    "mongol-expansion": {
+      "states": 113,
+      "extents": 0,
+      "selectable": 113
+    },
+    "mongol-rise": {
+      "states": 147,
+      "extents": 0,
+      "selectable": 147
+    },
+    "abbasid": {
+      "states": 76,
+      "extents": 0,
+      "selectable": 76
+    },
+    "late-antiquity": {
+      "states": 56,
+      "extents": 0,
+      "selectable": 56
+    },
+    "three-kingdoms": {
+      "states": 43,
+      "extents": 0,
+      "selectable": 43
+    },
+    "trajan": {
+      "states": 36,
+      "extents": 0,
+      "selectable": 36
+    },
+    "augustan": {
+      "states": 42,
+      "extents": 0,
+      "selectable": 42
+    }
+  },
+  "withheld": {
+    "wwii": [],
+    "wwi": [],
+    "unification": [
+      {
+        "sourceName": "Empire of Haiti",
+        "reason": "Haiti was not a single Haitian empire in this year; source geometry withheld.",
+        "sourceValidFrom": 1865,
+        "sourceValidTo": 1914
+      }
+    ],
+    "napoleonic": [
+      {
+        "sourceName": "Septinsular Republic",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1800,
+        "sourceValidTo": 1814
+      },
+      {
+        "sourceName": "Khmer Empire",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1803,
+        "sourceValidTo": 1858
+      },
+      {
+        "sourceName": "Sultanate of Malacca",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1803,
+        "sourceValidTo": 1860
+      },
+      {
+        "sourceName": "Grand Duchy of Tuscany",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1806,
+        "sourceValidTo": 1813
+      },
+      {
+        "sourceName": "Empire of Haiti",
+        "reason": "Haiti was not a single Haitian empire in this year; source geometry withheld.",
+        "sourceValidFrom": 1809,
+        "sourceValidTo": 1821
+      },
+      {
+        "sourceName": "Helvetic Republic",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1811,
+        "sourceValidTo": 1813
+      },
+      {
+        "sourceName": "Guayaquil Junta",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1812,
+        "sourceValidTo": 1813
+      },
+      {
+        "sourceName": "Italian Republic",
+        "reason": "Source republican label does not identify the Napoleonic Kingdom of Italy; withheld.",
+        "sourceValidFrom": 1812,
+        "sourceValidTo": 1813
+      },
+      {
+        "sourceName": "Principality of Regensberg",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1812,
+        "sourceValidTo": 1813
+      }
+    ],
+    "westphalia": [
+      {
+        "sourceName": "Khmer Empire",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1588,
+        "sourceValidTo": 1652
+      },
+      {
+        "sourceName": "Sultanate of Malacca",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1640,
+        "sourceValidTo": 1676
+      },
+      {
+        "sourceName": "County of Urgell",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1642,
+        "sourceValidTo": 1701
+      }
+    ],
+    "encounters": [
+      {
+        "sourceName": "County of Urgell",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1279,
+        "sourceValidTo": 1515
+      },
+      {
+        "sourceName": "Khmer Empire",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1475,
+        "sourceValidTo": 1539
+      }
+    ],
+    "constantinople": [
+      {
+        "sourceName": "County of Urgell",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1279,
+        "sourceValidTo": 1515
+      },
+      {
+        "sourceName": "Khmer Empire",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1375,
+        "sourceValidTo": 1474
+      }
+    ],
+    "mongol-expansion": [
+      {
+        "sourceName": "Ngô Dynasty",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1241,
+        "sourceValidTo": 1278
+      },
+      {
+        "sourceName": "Abbasid Caliphate",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1250,
+        "sourceValidTo": 1259
+      },
+      {
+        "sourceName": "Kingdom of Dali",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1250,
+        "sourceValidTo": 1259
+      },
+      {
+        "sourceName": "Kingdom of Polonnaruwa",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1250,
+        "sourceValidTo": 1259
+      },
+      {
+        "sourceName": "Hamdanid Emirates",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1250,
+        "sourceValidTo": 1259
+      }
+    ],
+    "mongol-rise": [
+      {
+        "sourceName": "Hamdanid Emirates",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1206,
+        "sourceValidTo": 1209
+      },
+      {
+        "sourceName": "Ngô Dynasty",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 1206,
+        "sourceValidTo": 1219
+      }
+    ],
+    "abbasid": [],
+    "late-antiquity": [
+      {
+        "sourceName": "Byeonhan",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": -91,
+        "sourceValidTo": 533
+      }
+    ],
+    "three-kingdoms": [
+      {
+        "sourceName": "Sasanian Empire",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": 215,
+        "sourceValidTo": 223
+      }
+    ],
+    "trajan": [],
+    "augustan": [
+      {
+        "sourceName": "Great Yuan",
+        "reason": "Outside reviewed existence window; source geometry withheld rather than redated.",
+        "sourceValidFrom": -50,
+        "sourceValidTo": 42
+      }
+    ]
+  },
+  "transform": "Reuse atlas RDP at 0.018 degrees with tiny/dateline rings preserved; five-decimal coordinates. Source validity filtering; non-aggregate polity records; reviewed existence-window exclusions; no invented country geometry. CShapes dates apply only to its coded state/dependency validity, not to actual wartime occupation. Annual Cliopatria layers are not January-1 frontiers.",
+  "limitations": [
+    "Era choices are editorial turning points, not an objective ranking of history.",
+    "Ancient and medieval coverage is incomplete and contains remaining source uncertainty, overlaps and source aggregates.",
+    "All economic, population and technology templates are synthetic gameplay values; no era-specific warfare, religion or institutions are simulated.",
+    "1783 and 2026 continue to use the preserved atlas layers and documented limitations."
+  ],
+  "catalogCount": 1443
+}

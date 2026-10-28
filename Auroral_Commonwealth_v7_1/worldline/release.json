@@ -1,0 +1,10 @@
+{
+  "name": "Auroral Worldline Intelligence Suite",
+  "version": "1.0.0",
+  "baseGameVersion": "6.1.0",
+  "schemaVersion": 1,
+  "engine": "existing Stable v6.1 monthly engine; generated deterministic adapters",
+  "entrypoint": "../index.html",
+  "externalServicesRequired": false,
+  "newRuntimeDependencies": 0
+}
